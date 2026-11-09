@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>计算与工具链 · 书生·探微 SciProbe</title>
+<link rel="stylesheet" href="assets/styles.css?v=20261109"/>
+<style>
+  .ser-chip{
+    height:24px;padding:0 9px;border:1px solid var(--line);border-radius:var(--r-tag);
+    background:transparent;font-family:var(--sans);font-size:10px;color:var(--text-3);
+    display:inline-flex;align-items:center;gap:5px;transition:.12s;
+  }
+  .ser-chip i{width:7px;height:7px;border-radius:2px}
+  .ser-chip.on{color:var(--text-1);border-color:var(--line-3);background:var(--bg-2)}
+  .ser-chip:hover{color:var(--text-1)}
+  .logline{display:flex;gap:10px}
+  .logline .lt{color:#4A6A63}
+  .logline .lv{width:38px;flex:0 0 auto}
+  .logline .lv.info{color:var(--blue)} .logline .lv.ok{color:var(--accent)} .logline .lv.warn{color:var(--amber)}
+</style>
+</head>
+<body data-page="compute">
+<main class="main">
+
+  <div class="page-head">
+    <div>
+      <h1>计算与工具链</h1>
+      <div class="sub">62 任务 / 4,180 core·h · GPU 队列 2 等待 · MCP 8 服务 / A2A 2 节点</div>
+    </div>
+    <div class="actions">
+      <div class="segmented" id="view-seg">
+        <button class="on" data-view="neb">NEB</button>
+        <button data-view="aimd">AIMD</button>
+        <button data-view="hull">凸包</button>
+      </div>
+      <button class="btn btn-primary" id="submit">提交任务</button>
+    </div>
+  </div>
+
+  <div class="grid g-2-1" style="margin-bottom:12px">
+    <div class="stack" style="min-width:0">
+
+      <!-- NEB chart -->
+      <section class="panel">
+        <div class="panel-head">
+          <h3 id="chart-title">NEB 迁移势垒</h3>
+          <span class="hint" id="chart-hint">CI-NEB · 5 IMAGES · fmax 0.03 eV/Å</span>
+          <div class="right row" style="gap:6px" id="series-toggles"></div>
+        </div>
+        <div class="panel-body">
+          <div class="chart" id="neb-chart"></div>
+          <div class="chart-note" id="chart-note">Na₂→Na₁ 路径为最优通道；并联通道按 298 K log-sum-exp 修正后有效势垒 0.180 eV。</div>
+        </div>
+      </section>
+
+      <!-- run queue -->
+      <section class="panel">
+        <div class="panel-head">
+          <h3>任务队列</h3>
+          <span class="hint" id="run-count">8 RUNS</span>
+          <div class="right"><span class="tag tag-run"><span class="dot dot-run"></span>2 运行中</span></div>
+        </div>
+        <div class="panel-body tight" style="max-height:346px;overflow:auto">
+          <table class="table">
+            <thead>
+              <tr><th>ID</th><th>智能体</th><th>工具</th><th>参数</th><th>状态</th><th style="text-align:right">耗时</th><th style="text-align:right">tokens</th></tr>
+            </thead>
+            <tbody id="run-body"></tbody>
+          </table>
+        </div>
+        <div class="panel-foot">队列由统筹智能体动态排序：实验闭环优先于文献扩充；超时任务自动降级重试一次</div>
+      </section>
+    </div>
+
+    <div class="stack" style="min-width:0">
+      <!-- tool registry -->
+      <section class="panel">
+        <div class="panel-head">
+          <h3>MCP 工具注册表</h3><span class="hint">8 SERVERS</span>
+          <div class="right"><span class="tag tag-calc">v1.4</span></div>
+        </div>
+        <div class="panel-body tight" style="max-height:430px;overflow:auto" id="tool-list"></div>
+        <div class="panel-foot">schema 与离线调用共用同一份定义，保证 demo 与真实装载不漂移</div>
+      </section>
+
+      <!-- A2A -->
+      <section class="panel">
+        <div class="panel-head"><h3>A2A 联邦节点</h3><span class="hint">v1.0</span></div>
+        <div class="panel-body tight" id="a2a-list"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- console -->
+  <section class="panel">
+    <div class="panel-head">
+      <h3>计算日志</h3><span class="hint">GATEWAY STREAM</span>
+      <div class="right"><button class="btn btn-sm btn-ghost" id="clear-log">清屏</button></div>
+    </div>
+    <div class="panel-body" style="padding:16px">
+      <div class="code" id="log" style="max-height:220px;overflow:auto"></div>
+    </div>
+  </section>
+
+</main>
+
+<script src="assets/mock.js?v=20261109"></script>
+<script src="assets/charts.js?v=20261109"></script>
+<script src="assets/app.js?v=20261109"></script>
+<script src="assets/demo.js?v=20261109e"></script>
+<script>
+/* ---------------- chart ---------------- */
+const active = new Set(['未掺杂', 'Mg 单掺', '三元 pred.']);
+let view = 'neb';
+
+function renderChart() {
+  if (view === 'neb') {
+    const series = MOCK.NEB.filter(s => active.has(s.name));
+    Charts.line('#neb-chart', {
+      h: 292, series,
+      xLabel: '反应坐标', yLabel: '相对能量 (eV)',
+      xTicks: 6, yTicks: 5,
+      fmtX: v => v.toFixed(2), fmtY: v => v.toFixed(3),
+    });
+    document.getElementById('chart-title').textContent = 'NEB 迁移势垒';
+    document.getElementById('chart-hint').textContent = 'CI-NEB · 5 IMAGES · fmax 0.03 eV/Å';
+    document.getElementById('chart-note').textContent =
+      'Na₂→Na₁ 路径为最优通道；并联通道按 298 K log-sum-exp 修正后有效势垒 0.180 eV。';
+  } else if (view === 'aimd') {
+    const series = [
+      { name: '300 K', color: '#6FA5D6', pts: [[0,0],[2,1.2],[4,2.1],[6,3.0],[8,3.8],[10,4.7],[12,5.5],[14,6.4],[16,7.2],[18,8.1],[20,9.0]] },
+      { name: '600 K', color: '#3BD9BE', pts: [[0,0],[2,3.4],[4,6.9],[6,10.2],[8,13.6],[10,17.1],[12,20.4],[14,23.8],[16,27.3],[18,30.6],[20,34.0]] },
+      { name: '900 K', color: '#E2A94F', pts: [[0,0],[2,6.1],[4,12.3],[6,18.2],[8,24.4],[10,30.3],[12,36.5],[14,42.4],[16,48.6],[18,54.5],[20,60.4]] },
+    ];
+    Charts.line('#neb-chart', {
+      h: 292, series, xLabel: '时间 (ps)', yLabel: 'MSD (Å²)',
+      xTicks: 6, yTicks: 5, fmtX: v => v.toFixed(0), fmtY: v => v.toFixed(1),
+      legend: false,
+    });
+    document.getElementById('neb-chart').insertAdjacentHTML('beforeend',
+      `<div class="chart-legend">${series.map(s => `<span><i style="background:${s.color}"></i>${s.name} · D=1.42e-6 cm²/s（900 K）</span>`).join('')}</div>`);
+    document.getElementById('chart-title').textContent = 'AIMD 均方位移';
+    document.getElementById('chart-hint').textContent = '20 ps · NVT · 线性度 0.986';
+    document.getElementById('chart-note').textContent = 'MSD 线性段 1.2–8.0 ps 用于拟合扩散系数；900 K 下非晶化体积分数 2.6%。';
+  } else {
+    const series = [{ name: '凸包能', color: '#3BD9BE', pts: [[0,0.006],[0.05,0.008],[0.1,0.009],[0.15,0.013],[0.2,0.017],[0.25,0.021],[0.3,0.026],[0.35,0.031]] }];
+    Charts.line('#neb-chart', {
+      h: 292, series, xLabel: 'x(Mg)', yLabel: 'E_hull (eV/atom)',
+      xTicks: 7, yTicks: 5, fmtX: v => v.toFixed(2), fmtY: v => v.toFixed(3),
+      bands: [{ from: 0.3, to: 0.35, color: 'rgba(224,106,92,.10)', label: '失稳区' }],
+    });
+    document.getElementById('chart-title').textContent = '凸包稳定性';
+    document.getElementById('chart-hint').textContent = 'eV/atom · 阈值 0.025';
+    document.getElementById('chart-note').textContent = 'x(Mg) > 0.28 后凸包能越过阈值，与反证 E-007 的晶界非晶化结论一致。';
+  }
+}
+
+function renderToggles() {
+  const wrap = document.getElementById('series-toggles');
+  if (view !== 'neb') { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = MOCK.NEB.map(s =>
+    `<button class="ser-chip ${active.has(s.name) ? 'on' : ''}" data-ser="${s.name}">
+      <i style="background:${s.color}"></i>${s.name}</button>`).join('');
+  wrap.querySelectorAll('[data-ser]').forEach(b => {
+    b.addEventListener('click', () => {
+      const k = b.dataset.ser;
+      if (active.has(k)) { active.delete(k); } else { active.add(k); }
+      if (!active.size) { active.add(k); App.toast('至少保留一条曲线', 'warn'); }
+      renderToggles();
+      const series = MOCK.NEB.filter(s => active.has(s.name));
+      Charts.line('#neb-chart', {
+        h: 292, series, xLabel: '反应坐标', yLabel: '相对能量 (eV)',
+        xTicks: 6, yTicks: 5, fmtX: v => v.toFixed(2), fmtY: v => v.toFixed(3),
+      });
+    });
+  });
+}
+renderChart();
+renderToggles();
+
+document.querySelectorAll('#view-seg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#view-seg button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    view = b.dataset.view;
+    renderChart();
+    renderToggles();
+  });
+});
+
+/* ---------------- run queue ---------------- */
+let runs = MOCK.RUNS.map(r => ({ ...r }));
+const AG = id => MOCK.AGENTS.find(a => a.id === id);
+const STATUS_TAG = { ok: 'tag-run', run: 'tag-calc', warn: 'tag-warn', fail: 'tag-fail', queue: 'tag-mute' };
+const STATUS_TXT = { ok: '完成', run: '运行中', warn: '待复核', fail: '失败', queue: '排队' };
+
+function renderRuns() {
+  document.getElementById('run-count').textContent = runs.length + ' RUNS';
+  document.getElementById('run-body').innerHTML = runs.map(r => `
+    <tr data-run="${r.id}">
+      <td class="num">${r.id}</td>
+      <td><div class="row" style="gap:6px"><span class="agent-avatar sm" data-role="${AG(r.agent).role}">${AG(r.agent).code}</span><span style="font-size:11px">${AG(r.agent).name.split(' · ')[0]}</span></div></td>
+      <td class="num" style="color:var(--accent)">${r.tool}</td>
+      <td style="font-size:11px;color:var(--text-3);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.args}</td>
+      <td><span class="tag ${STATUS_TAG[r.status]}">${STATUS_TXT[r.status]}</span></td>
+      <td class="num">${r.duration}</td>
+      <td class="num" style="color:var(--text-3)">${r.tokens}</td>
+    </tr>`).join('');
+
+  document.querySelectorAll('[data-run]').forEach(row => {
+    row.addEventListener('click', () => {
+      const r = runs.find(x => x.id === row.dataset.run);
+      const log = [
+        `[10:42:18] INFO  dispatch ${r.tool} → ${r.agent}`,
+        `[10:42:19] INFO  args ${r.args}`,
+        `[10:42:31] INFO  server materials-dft: job ${r.id.toLowerCase()} accepted`,
+        `[10:51:02] OK    SCF converged  ΔE < 1e-6 eV (12 iter)`,
+        `[11:05:24] WARN  image 3 force 0.041 eV/Å > fmax, retry with 7 images`,
+        `[11:20:26] OK    CI-NEB converged · barrier 0.183 eV`,
+        `[11:20:27] INFO  evidence written E-006 · hash sha256:6b85…4ab`,
+      ].join('\n');
+      App.openModal(r.id + ' · ' + r.tool, AG(r.agent).name + ' · ' + r.duration, `
+        <div class="kv">
+          <span class="k">状态</span><span class="v">${STATUS_TXT[r.status]}</span>
+          <span class="k">参数</span><span class="v" style="font-size:10px">${r.args}</span>
+          <span class="k">tokens</span><span class="v">${r.tokens}</span>
+          <span class="k">时间</span><span class="v">${r.ts}</span>
+        </div>
+        <div class="code mt16" style="font-size:10px">${log}</div>
+      `, 'RUN DETAIL');
+    });
+  });
+}
+renderRuns();
+
+document.getElementById('submit').addEventListener('click', () => {
+  const id = 'R-' + (1043 + runs.length - MOCK.RUNS.length);
+  runs.unshift({ id, agent: 'calc', tool: 'dft_neb_barrier', args: 'Na2.9K0.1Zr1.7Mg0.3Si2PO12 / 7 images',
+    status: 'queue', duration: '—', tokens: '—', ts: new Date().toTimeString().slice(0, 5) });
+  renderRuns();
+  App.toast('任务已排队 · 等待 GPU 资源');
+  setTimeout(() => {
+    const r = runs.find(x => x.id === id); if (!r) return;
+    r.status = 'run'; r.duration = '2m 04s'; renderRuns();
+  }, 1800);
+  setTimeout(() => {
+    const r = runs.find(x => x.id === id); if (!r) return;
+    r.status = 'ok'; r.duration = '14m 22s'; r.tokens = '2.9K'; renderRuns();
+    App.toast('任务完成 · 有效势垒 0.187 eV · 证据已挂载');
+    pushLog('OK', `${id} 完成 · barrier 0.187 eV`);
+  }, 4200);
+});
+
+/* ---------------- tools ---------------- */
+document.getElementById('tool-list').innerHTML = MOCK.TOOLS.map(t => `
+  <div class="list-item" data-tool="${t.id}">
+    <span class="dot ${t.status === 'ok' ? 'dot-run' : t.status === 'warn' ? 'dot-warn' : 'dot-idle'}"></span>
+    <div class="li-main">
+      <div class="li-title">
+        <span class="mono" style="font-size:11px;color:var(--accent)">${t.name}</span>
+        <span class="tag ${t.protocol === 'MCP v1' ? 'tag-calc' : 'tag-warn'}">${t.protocol}</span>
+      </div>
+      <div class="li-desc">${t.desc}</div>
+      <div class="li-sub">${t.calls} 次调用 · ${t.latency} ms · ${t.server}</div>
+    </div>
+  </div>`).join('');
+
+document.querySelectorAll('[data-tool]').forEach(row => {
+  row.addEventListener('click', () => {
+    const t = MOCK.TOOLS.find(x => x.id === row.dataset.tool);
+    const schema = t.io.map(line => `tool: ${line}`).join('\n');
+    App.openModal(t.name, t.protocol + ' · ' + t.server, `
+      <div style="font-size:12px;color:var(--text-2);line-height:1.75">${t.desc}</div>
+      <div class="kv mt12">
+        <span class="k">延迟</span><span class="v">${t.latency} ms</span>
+        <span class="k">调用次数</span><span class="v">${t.calls}</span>
+        <span class="k">状态</span><span class="v">${t.status}</span>
+      </div>
+      <div class="code mt16">${schema}</div>
+      <div class="row mt12" style="gap:6px">
+        <button class="btn btn-sm" data-copy="${schema}">复制 schema</button>
+        <button class="btn btn-sm" data-toast="已加入本地 MCP 配置">加入本地配置</button>
+      </div>
+    `, 'TOOL SCHEMA');
+  });
+});
+
+/* ---------------- a2a ---------------- */
+const A2A = [
+  { name: '计算集群 · 上海超算', lat: '320 ms', state: '已认证', d: 'GPU/CPU 混合队列' },
+  { name: '自动化实验线 · 材料所', lat: '1,240 ms', state: '已认证', d: '配方下发 / EIS 回传' },
+  { name: '同行评审沙盒 · 第三方', lat: '1,500 ms', state: '空闲', d: '独立评审智能体' },
+];
+document.getElementById('a2a-list').innerHTML = A2A.map(a => `
+  <div class="list-item" data-toast="${a.name} 已发起连接握手" style="padding:9px 16px">
+    <div class="li-main">
+      <div class="li-title" style="font-size:12px">${a.name}</div>
+      <div class="li-sub">${a.d} · ${a.lat}</div>
+    </div>
+    <span class="tag ${a.state === '已认证' ? 'tag-run' : 'tag-mute'}">${a.state}</span>
+  </div>`).join('');
+
+/* ---------------- log ---------------- */
+const LOGS = [
+  ['INFO', 'gateway  session 08f3c1 attached · 7 agents'],
+  ['OK', 'mcp      materials-dft v1.4 handshake (8 tools)'],
+  ['INFO', 'dft      R-1042 CI-NEB 5 images · cutoff 520 eV'],
+  ['OK', 'dft      SCF converged ΔE 3.1e-7 eV'],
+  ['WARN', 'dft      image 3 fmax 0.041 > 0.03 · 插值补点'],
+  ['OK', 'neb      barrier 0.183 eV · 3 paths'],
+  ['INFO', 'aimd     R-1041 900 K 20 ps · NVT'],
+  ['OK', 'aimd     MSD 线性度 0.986 · D 1.42e-6 cm²/s'],
+  ['INFO', 'hull     Na-K-Zr-Mg-Si-P-O 凸包判定'],
+  ['OK', 'hull     stable · E_hull 0.0072 eV/atom'],
+];
+function pushLog(level, msg) {
+  const d = new Date();
+  const ts = [d.getHours(), d.getMinutes(), d.getSeconds()].map(x => String(x).padStart(2, '0')).join(':');
+  const el = document.getElementById('log');
+  el.insertAdjacentHTML('beforeend',
+    `<div class="logline"><span class="lt">[${ts}]</span><span class="lv ${level.toLowerCase()}">${level}</span><span>${msg}</span></div>`);
+  el.scrollTop = 1e6;
+}
+document.getElementById('log').innerHTML = LOGS.map(([lv, msg], i) => {
+  const t = `10:${String(20 + i * 3).padStart(2, '0')}:0${i % 9}`;
+  return `<div class="logline"><span class="lt">[${t}]</span><span class="lv ${lv.toLowerCase()}">${lv}</span><span>${msg}</span></div>`;
+}).join('');
+
+document.getElementById('clear-log').addEventListener('click', () => {
+  document.getElementById('log').innerHTML = '';
+  App.toast('日志已清屏');
+});
+</script>
+</body>
+</html>

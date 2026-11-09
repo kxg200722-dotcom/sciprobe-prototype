@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>科学数据解析 · 书生·探微 SciProbe</title>
+<link rel="stylesheet" href="assets/styles.css?v=20261109"/>
+<style>
+  .file-card{
+    border:1px solid var(--line); border-radius:var(--r-ctl); background:var(--bg-2);
+    padding:12px 16px; display:flex; flex-direction:column; gap:6px;
+  }
+  .file-card .fc-name{font-family:var(--mono); font-size:11px; color:var(--text-1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .file-card .fc-meta{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10px; color:var(--text-3)}
+  .el-legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:10px}
+  .el-legend span{display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:10px; color:var(--text-3); cursor:pointer}
+  .el-legend i{width:9px; height:9px; border-radius:50%; display:inline-block}
+  .conc{border:1px solid var(--line); border-radius:var(--r-ctl); padding:11px 13px; background:var(--bg-2)}
+</style>
+</head>
+<body data-page="analysis">
+<main class="main">
+
+  <div class="page-head">
+    <div>
+      <h1>科学数据解析</h1>
+      <div class="sub">PXRD / EIS / SEM-EDS / 晶体结构 · InternVL3.5 + S2 多模态 · 当前样本 S-03</div>
+    </div>
+    <div class="actions">
+      <div class="segmented" id="sample-seg">
+        <button class="on" data-sample="S-03">S-03</button>
+        <button data-sample="S-02">S-02</button>
+        <button data-sample="S-01">S-01</button>
+      </div>
+      <button class="btn btn-primary" id="upload">上传数据</button>
+    </div>
+  </div>
+
+  <!-- file strip -->
+  <section class="panel" style="margin-bottom:12px">
+    <div class="panel-head">
+      <h3>已解析输入</h3>
+      <span class="hint">4 FILES · 3.8 MB</span>
+      <div class="right"><span class="tag tag-run">全部解析完成</span></div>
+    </div>
+    <div class="panel-body" style="padding:16px">
+      <div class="grid g4" id="files"></div>
+    </div>
+  </section>
+
+  <div class="grid g-2-1" style="margin-bottom:12px">
+
+    <!-- XRD -->
+    <section class="panel">
+      <div class="panel-head">
+        <h3>PXRD 图谱 · <span id="xrd-sample" style="color:var(--text-2)">S-03</span></h3>
+        <span class="hint">Cu Kα · 2θ 10–66°</span>
+        <div class="right">
+          <div class="segmented" id="label-switch">
+            <button class="on" data-labels="1">峰位标注</button>
+            <button data-labels="0">纯谱图</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="chart" id="xrd-chart"></div>
+        <div class="chart-legend">
+          <span><i style="background:#3BD9BE"></i>实测（合成示意）</span>
+          <span><i style="background:#93A6A1"></i>PDF 参考（R-3c）</span>
+          <span><i style="background:#3E555B;width:2px;height:9px"></i>布拉格位置</span>
+        </div>
+        <div class="chart-note">示意数据：峰位与相对强度按 NASICON R-3c 结构合成，仅用于演示解析与标注流程。</div>
+      </div>
+      <div class="panel-head" style="border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+        <h3 style="font-size:11px">主峰表</h3><span class="hint">PEAK MATCH</span>
+      </div>
+      <div class="panel-body tight" style="max-height:214px;overflow:auto">
+        <table class="table">
+          <thead><tr><th>2θ (°)</th><th>hkl</th><th style="text-align:right">I / a.u.</th><th>归属相</th><th>备注</th></tr></thead>
+          <tbody id="peak-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- crystal + nyquist -->
+    <div class="stack" style="min-width:0">
+      <section class="panel">
+        <div class="panel-head">
+          <h3>晶体结构</h3><span class="hint">R-3c · NZSP</span>
+          <div class="right"><span class="tag">可拖拽旋转</span></div>
+        </div>
+        <div class="panel-body" style="padding:12px 16px">
+          <div id="crystal" style="border-radius:4px;background:var(--bg-0)"></div>
+          <div class="el-legend" id="el-legend"></div>
+          <div class="kv mt12">
+            <span class="k">晶胞</span><span class="v">a = b = 8.72 Å</span>
+            <span class="k">c</span><span class="v">12.36 Å</span>
+            <span class="k">空间群</span><span class="v">R-3c (#167)</span>
+          </div>
+        </div>
+        <div class="panel-foot">原子半径按元素共价半径缩放；悬停图例可高亮对应元素</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h3>Nyquist 阻抗谱</h3><span class="hint">25 °C · EIS</span>
+          <div class="right"><button class="btn btn-sm" id="fit">等效电路拟合</button></div>
+        </div>
+        <div class="panel-body">
+          <div class="chart" id="nyq-chart"></div>
+          <div class="chart-note" id="fit-note">未拟合：半圆直径对应晶界电阻 R_GB。</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- conclusions -->
+  <section class="panel">
+    <div class="panel-head">
+      <h3>解析结论</h3>
+      <span class="hint">AUTO-EXTRACTED · 待人工复核</span>
+      <div class="right"><span class="tag tag-run">平均置信 0.91</span></div>
+    </div>
+    <div class="panel-body">
+      <div class="grid g2" id="conclusions"></div>
+    </div>
+    <div class="panel-foot">所有数值由多模态解析器回读并挂载证据 ID；置信 &lt; 0.7 的条目不会进入结论段</div>
+  </section>
+
+</main>
+
+<script src="assets/mock.js?v=20261109"></script>
+<script src="assets/charts.js?v=20261109"></script>
+<script src="assets/crystal.js?v=20261109"></script>
+<script src="assets/app.js?v=20261109"></script>
+<script src="assets/demo.js?v=20261109e"></script>
+<script>
+/* ---------------- files ---------------- */
+const FILES = [
+  { name: 'S-03_XRD.xy', type: 'PXRD', size: '182 KB', ms: '1.2 s', ok: true },
+  { name: 'S-03_EIS.csv', type: 'EIS', size: '96 KB', ms: '0.4 s', ok: true },
+  { name: 'S-03_SEM_5k.tif', type: 'SEM-EDS', size: '3.4 MB', ms: '2.8 s', ok: true },
+  { name: 'Na3Zr2Si2PO12.cif', type: 'CIF', size: '12 KB', ms: '0.2 s', ok: true },
+];
+document.getElementById('files').innerHTML = FILES.map(f => `
+  <div class="file-card">
+    <div class="fc-name">${f.name}</div>
+    <div class="fc-meta">
+      <span class="tag tag-calc">${f.type}</span>
+      <span>${f.size}</span>
+      <span style="margin-left:auto;color:var(--accent)">${App.icon('check', 10)} ${f.ms}</span>
+    </div>
+  </div>`).join('');
+
+/* ---------------- XRD ---------------- */
+let showLabels = true;
+let currentSample = 'S-03';
+const sticks = MOCK.XRD_PEAKS.map(p => [p[0], p[1]]);
+
+function drawXrd() {
+  Charts.xrd('#xrd-chart', {
+    h: 300,
+    pattern: MOCK.XRD_PATTERN,
+    reference: MOCK.XRD_REFERENCE,
+    sticks: sticks,
+    labels: showLabels,
+  });
+}
+drawXrd();
+
+document.querySelectorAll('#label-switch button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#label-switch button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    showLabels = b.dataset.labels === '1';
+    drawXrd();
+  });
+});
+
+const PHASE = { '110': 'NZSP R-3c', '116': 'NZSP R-3c', '024': 'NZSP R-3c', '131': 'NZSP R-3c', 'm-ZrO2': 'm-ZrO₂', 'ZrO₂': 'm-ZrO₂' };
+const MAIN_PEAKS = [19.42, 24.32, 27.42, 29.60, 32.32, 28.21];
+document.getElementById('peak-table').innerHTML = MAIN_PEAKS.map(two => {
+  const p = MOCK.XRD_PEAKS.find(x => x[0] === two);
+  const hkl = p[2];
+  const isImpurity = hkl === 'm-ZrO2';
+  return `<tr>
+    <td class="num">${two.toFixed(2)}</td>
+    <td class="num">${isImpurity ? '—' : hkl}</td>
+    <td class="num">${p[1]}</td>
+    <td>${isImpurity ? '<span style="color:var(--red)">m-ZrO₂</span>' : 'NZSP R-3c'}</td>
+    <td style="color:var(--text-3);font-size:11px">${isImpurity ? '微量第二相 · 需复核' : '主相匹配'}</td>
+  </tr>`;
+}).join('');
+
+/* ---------------- crystal ---------------- */
+const viewer = Crystal.mount('#crystal', MOCK.CRYSTAL, { height: 300, autoRotate: true, speed: 0.005 });
+const ELEMENTS = [
+  { el: 'Na', color: '#3BD9BE' }, { el: 'Zr', color: '#6FA5D6' }, { el: 'P', color: '#E2A94F' },
+  { el: 'Si', color: '#B4A0DC' }, { el: 'O', color: '#61756F' },
+];
+document.getElementById('el-legend').innerHTML = ELEMENTS.map(e =>
+  `<span data-el="${e.el}"><i style="background:${e.color}"></i>${e.el}</span>`).join('');
+document.querySelectorAll('[data-el]').forEach(node => {
+  node.addEventListener('mouseenter', () => viewer && viewer.highlight(node.dataset.el));
+  node.addEventListener('mouseleave', () => viewer && viewer.highlight(null));
+});
+
+/* ---------------- Nyquist ---------------- */
+Charts.line('#nyq-chart', {
+  h: 232,
+  series: MOCK.NYQUIST.map(s => ({ name: s.name, color: s.color, pts: s.pts })),
+  xLabel: "Z' (Ω)", yLabel: "-Z'' (Ω)",
+  xTicks: 5, yTicks: 4,
+  fmtX: v => v.toFixed(1), fmtY: v => v.toFixed(1),
+  legend: false,
+});
+document.getElementById('nyq-chart').insertAdjacentHTML('beforeend',
+  `<div class="chart-legend">${MOCK.NYQUIST.map(s =>
+    `<span><i style="background:${s.color}"></i>${s.name}</span>`).join('')}</div>`);
+
+document.getElementById('fit').addEventListener('click', () => {
+  const note = document.getElementById('fit-note');
+  note.innerHTML = '<span style="color:var(--accent)">拟合完成：R_bulk 0.92 Ω · R_GB 1.38 Ω · CPE_GB (n=0.86) · χ² 1.4e-3 · 晶界贡献 18.1%</span>';
+  App.toast('等效电路拟合完成 · R_GB 占 18.1%');
+});
+
+/* ---------------- sample switch ---------------- */
+document.querySelectorAll('#sample-seg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#sample-seg button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    currentSample = b.dataset.sample;
+    document.getElementById('xrd-sample').textContent = currentSample;
+    const s = MOCK.SAMPLES.find(x => x.id === currentSample);
+    App.toast('已切换采集通道 ' + currentSample + ' · σ_rt ' + s.sig + ' mS/cm');
+  });
+});
+
+document.getElementById('upload').addEventListener('click', () => {
+  App.toast('已接收文件，进入多模态解析队列（预计 30 s）');
+});
+
+/* ---------------- conclusions ---------------- */
+const CONC = [
+  { t: '物相鉴定', v: '主相 NASICON R-3c，检出 6.3% m-ZrO₂ 微量第二相', c: 0.94, ev: 'E-008', tag: 'tag-run' },
+  { t: '晶界贡献', v: 'R_GB 占比 18.1%，较基线 41% 显著下降', c: 0.93, ev: 'E-009', tag: 'tag-run' },
+  { t: '致密度', v: 'SPS 后 96.8%，闭孔率 2.1%（SEM 截面统计）', c: 0.90, ev: 'X-04', tag: 'tag-calc' },
+  { t: '数据质量', v: '峰位残差 0.021°，图表回读残差 0.004 eV，质量评分 0.91', c: 0.91, ev: 'E-012', tag: 'tag-calc' },
+];
+document.getElementById('conclusions').innerHTML = CONC.map(c => `
+  <div class="conc">
+    <div class="row" style="gap:8px;margin-bottom:6px">
+      <span class="tag ${c.tag}">${c.t}</span>
+      <span class="mono" style="margin-left:auto;font-size:10px;color:var(--text-3)">${c.ev}</span>
+    </div>
+    <div style="font-size:12px;color:var(--text-1);line-height:1.65">${c.v}</div>
+    <div class="bar-row mt8" style="gap:6px">
+      <div class="bar-track"><i style="width:${Math.round(c.c * 100)}%"></i></div>
+      <span class="bar-val">${App.fmt(c.c)}</span>
+    </div>
+  </div>`).join('');
+</script>
+</body>
+</html>

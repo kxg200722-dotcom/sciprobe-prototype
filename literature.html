@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>文献与知识图谱 · 书生·探微 SciProbe</title>
+<link rel="stylesheet" href="assets/styles.css?v=20261109"/>
+<style>
+  .kg-node{cursor:pointer}
+  .kg-node circle{transition:stroke-width .15s}
+  .filter-hint{font-family:var(--sans);font-size:11px;color:var(--text-3);letter-spacing:.01em}
+  #kg{cursor:grab; touch-action:none; user-select:none}
+  #kg.dragging{cursor:grabbing}
+  .kg-stage{position:relative}
+  .kg-controls{
+    position:absolute; top:8px; right:8px; z-index:3;
+    display:flex; align-items:center; gap:5px;
+    padding:4px; border:1px solid var(--line-2); border-radius:4px;
+    background:var(--bg-1);
+  }
+  .kg-controls .btn{height:22px; min-width:24px; padding:0 6px}
+  .kg-controls .tag{height:20px}
+  .range{width:100%;accent-color:var(--accent);height:3px;appearance:none;background:var(--line);border-radius:2px;outline:none}
+  .range::-webkit-slider-thumb{appearance:none;width:11px;height:11px;border-radius:50%;background:var(--accent);cursor:pointer}
+</style>
+</head>
+<body data-page="literature">
+<main class="main">
+
+  <div class="page-head">
+    <div>
+      <h1>文献与知识图谱</h1>
+      <div class="sub">1,284 篇初检 · 62 篇入池 · 148 条证据 · 最后同步 08:48</div>
+    </div>
+    <div class="actions">
+      <div class="searchbox" style="width:230px">
+        <span style="display:flex;color:var(--text-3)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+        <input id="kw" placeholder="检索标题 / 标签 / 作者" autocomplete="off"/>
+      </div>
+      <button class="btn" id="import">导入 PDF</button>
+      <button class="btn btn-primary" id="export">导出证据集</button>
+    </div>
+  </div>
+
+  <!-- filters -->
+  <section class="panel" style="margin-bottom:12px">
+    <div class="panel-body" style="padding:16px">
+      <div class="row wrap" style="gap:20px;align-items:center">
+        <div class="row" style="gap:8px">
+          <span class="filter-hint">来源</span>
+          <div class="segmented" id="src-seg">
+            <button class="on" data-src="all">全部</button>
+            <button data-src="journal">期刊</button>
+            <button data-src="preprint">预印本</button>
+          </div>
+        </div>
+        <div class="row" style="gap:8px">
+          <span class="filter-hint">排序</span>
+          <div class="segmented" id="sort-seg">
+            <button class="on" data-sort="rel">相关性</button>
+            <button data-sort="year">年份</button>
+            <button data-sort="cite">引用</button>
+          </div>
+        </div>
+        <div class="row" style="gap:10px;flex:1;min-width:220px">
+          <span class="filter-hint" style="white-space:nowrap">相关性 ≥ <b id="rel-val" style="color:var(--accent)">0.50</b></span>
+          <input class="range" id="rel" type="range" min="0" max="1" step="0.05" value="0.5"/>
+        </div>
+        <span class="tag" id="hit-count">命中 8 篇</span>
+        <button class="btn btn-sm btn-ghost" id="reset">重置</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid g-2-1" style="margin-bottom:12px">
+
+    <!-- paper list -->
+    <section class="panel" style="min-height:520px">
+      <div class="panel-head">
+        <h3>入池文献</h3>
+        <span class="hint">RELEVANCE RANKED</span>
+        <div class="right"><span class="tag tag-mute">demo 条目为合成示例</span></div>
+      </div>
+      <div class="panel-body tight" style="overflow:auto;max-height:560px" id="paper-list"></div>
+      <div class="panel-foot" id="list-foot">点击条目查看摘要与证据挂载</div>
+    </section>
+
+    <!-- knowledge graph -->
+    <section class="panel">
+      <div class="panel-head">
+        <h3>知识图谱</h3>
+        <span class="hint">9 节点 / 12 关系</span>
+      </div>
+      <div class="panel-body" style="padding:10px">
+        <div class="kg-stage">
+          <div class="graph-wrap" style="height:396px;border-radius:4px" id="kg"></div>
+          <div class="kg-controls">
+            <button class="btn btn-sm" id="kg-out" title="缩小">−</button>
+            <span class="tag" id="kg-scale">100%</span>
+            <button class="btn btn-sm" id="kg-in" title="放大">+</button>
+            <button class="btn btn-sm" id="kg-reset" title="重置视图">重置</button>
+          </div>
+        </div>
+        <div class="chart-legend" style="margin-top:8px">
+          <span><i style="background:#3BD9BE"></i>核心体系</span>
+          <span><i style="background:#6FA5D6"></i>假设</span>
+          <span><i style="background:#93A6A1"></i>事实</span>
+          <span><i style="background:#E2A94F"></i>结论</span>
+          <span><i style="background:#E06A5C"></i>风险</span>
+        </div>
+      </div>
+      <div class="panel-foot">点击节点 → 左侧按关键词过滤；滚轮缩放、拖拽平移；虚线 = 冲突或风险关系 · <span id="kg-sel">未选择节点</span></div>
+    </section>
+  </div>
+
+  <!-- evidence extraction -->
+  <section class="panel">
+    <div class="panel-head">
+      <h3>证据抽取</h3>
+      <span class="hint">EXTRACTED BY 图谱解读者 · 明辨</span>
+      <div class="right"><span class="tag tag-run">3 条新增 · 置信 0.88–0.95</span></div>
+    </div>
+    <div class="panel-body tight" id="ev-cards"></div>
+    <div class="panel-foot">原文引用句 ≤ 40 词；每条挂载 DOI / arXiv ID / 内容哈希</div>
+  </section>
+
+</main>
+
+<script src="assets/mock.js?v=20261109"></script>
+<script src="assets/charts.js?v=20261109"></script>
+<script src="assets/app.js?v=20261109"></script>
+<script src="assets/demo.js?v=20261109e"></script>
+<script>
+let state = { q: '', src: 'all', minRel: 0.5, sort: 'rel' };
+
+function isPreprint(p) {
+  return p.journal.indexOf('arXiv') === 0 || p.journal === 'Survey';
+}
+
+function filtered() {
+  let rows = MOCK.PAPERS.filter(p => {
+    const kw = state.q.trim().toLowerCase();
+    const hit = !kw || (p.title + p.authors + p.tags.join(' ') + p.journal).toLowerCase().includes(kw);
+    const srcOk = state.src === 'all' || (state.src === 'preprint' ? isPreprint(p) : !isPreprint(p));
+    return hit && srcOk && p.relevance >= state.minRel;
+  });
+  const sorters = {
+    rel: (a, b) => b.relevance - a.relevance,
+    year: (a, b) => b.year - a.year,
+    cite: (a, b) => b.cites - a.cites,
+  };
+  return rows.sort(sorters[state.sort]);
+}
+
+function renderList() {
+  const rows = filtered();
+  document.getElementById('hit-count').textContent = '命中 ' + rows.length + ' 篇';
+  const el = document.getElementById('paper-list');
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty">无匹配文献 · 放宽相关性阈值或清空关键词</div>';
+    return;
+  }
+  el.innerHTML = rows.map(p => `
+    <div class="list-item" data-pid="${p.id}" style="align-items:flex-start;padding:12px 16px">
+      <div class="li-main">
+        <div class="li-title" style="line-height:1.5">${p.title}</div>
+        <div class="li-sub" style="white-space:normal">${p.authors} · ${p.journal} · ${p.year} · ${p.doi}</div>
+        <div class="row wrap" style="gap:5px;margin-top:7px">
+          ${p.tags.slice(0, 2).map(t => `<span class="tag tag-mute">${t}</span>`).join('')}
+          ${p.demo ? '<span class="tag">示例条目</span>' : ''}
+        </div>
+      </div>
+      <div style="width:118px;flex:0 0 auto;text-align:right">
+        <span class="tag ${p.verdict === '核心依据' ? 'tag-run' : p.verdict === '机理支撑' ? 'tag-calc' : 'tag-mute'}">${p.verdict}</span>
+        <div class="bar-row" style="margin-top:8px;gap:6px">
+          <div class="bar-track"><i style="width:${Math.round(p.relevance * 100)}%"></i></div>
+          <span class="bar-val" style="width:30px">${App.fmt(p.relevance)}</span>
+        </div>
+        <div class="mono" style="font-size:10px;color:var(--text-3);margin-top:6px">被引 ${p.cites}</div>
+      </div>
+    </div>`).join('');
+
+  el.querySelectorAll('[data-pid]').forEach(node => {
+    node.addEventListener('click', () => {
+      const p = MOCK.PAPERS.find(x => x.id === node.dataset.pid);
+      App.openModal(p.title.slice(0, 64) + (p.title.length > 64 ? '…' : ''), p.journal + ' · ' + p.year, `
+        <div style="font-size:12px;color:var(--text-3);font-family:var(--mono);margin-bottom:10px">${p.authors}</div>
+        <div style="font-size:13px;line-height:1.85;color:var(--text-1)">${p.abstract}</div>
+        <div class="kv mt16">
+          <span class="k">DOI</span><span class="v" style="font-size:11px">${p.doi}</span>
+          <span class="k">相关性</span><span class="v">${App.fmt(p.relevance)}</span>
+          <span class="k">被引</span><span class="v">${p.cites}</span>
+          <span class="k">判定</span><span class="v">${p.verdict}</span>
+          <span class="k">类型</span><span class="v">${p.demo ? '合成示例' : '真实文献'}</span>
+        </div>
+        <div class="row mt16" style="gap:6px">
+          <button class="btn btn-sm" data-copy="${p.doi}">复制 DOI</button>
+          <button class="btn btn-sm" data-toast="已挂载为候选证据，待评审确认">挂载为证据</button>
+        </div>
+      `, 'PAPER CARD');
+    });
+  });
+  document.getElementById('list-foot').textContent =
+    `按${state.sort === 'rel' ? '相关性' : state.sort === 'year' ? '年份' : '引用'}排序 · 当前 ${rows.length} / ${MOCK.PAPERS.length} 篇`;
+}
+
+/* ---------------- knowledge graph ---------------- */
+const KG_DATA = MOCK.KG;
+const KIND_COLOR = { core: '#3BD9BE', hypo: '#6FA5D6', fact: '#93A6A1', result: '#E2A94F', risk: '#E06A5C' };
+const KEYWORD = { n2: 'Mg', n3: 'Ga', n4: 'K 取代', n1: '', n5: '晶界', n8: 'NASICON' };
+
+let selectedNode = null;
+
+/* ---------------- zoom / pan ---------------- */
+const KG_W = 620, KG_H = 396, KG_MIN = 0.55, KG_MAX = 4;
+const kgView = { k: 1, tx: 0, ty: 0 };
+let kgRaf = null, kgGuard = null, kgDragging = false, kgMoved = false;
+const kgEl = document.getElementById('kg');
+
+function applyKgView() {
+  const vp = kgEl.querySelector('#kg-viewport');
+  if (!vp) return;
+  vp.setAttribute('transform',
+    `translate(${kgView.tx.toFixed(2)} ${kgView.ty.toFixed(2)}) scale(${kgView.k.toFixed(4)})`);
+  const label = document.getElementById('kg-scale');
+  if (label) label.textContent = Math.round(kgView.k * 100) + '%';
+}
+
+function animateKgTo(k, tx, ty, dur) {
+  cancelAnimationFrame(kgRaf);
+  clearTimeout(kgGuard);
+  const k0 = kgView.k, tx0 = kgView.tx, ty0 = kgView.ty;
+  const t0 = performance.now(), d = dur || 180;
+  const finish = () => {
+    kgView.k = k; kgView.tx = tx; kgView.ty = ty;
+    applyKgView();
+  };
+  const step = now => {
+    const p = Math.min(1, (now - t0) / d);      // 线性插值
+    kgView.k = k0 + (k - k0) * p;
+    kgView.tx = tx0 + (tx - tx0) * p;
+    kgView.ty = ty0 + (ty - ty0) * p;
+    applyKgView();
+    if (p < 1) kgRaf = requestAnimationFrame(step);
+  };
+  kgRaf = requestAnimationFrame(step);
+  // 标签页不可见时 rAF 会被暂停，兜底保证最终状态一定落到 DOM 上
+  kgGuard = setTimeout(finish, d + 80);
+}
+
+function toKgPoint(e) {
+  const svg = kgEl.querySelector('svg');
+  if (!svg || !svg.getScreenCTM()) return { x: KG_W / 2, y: KG_H / 2 };
+  const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+  return { x: p.x, y: p.y };
+}
+
+function zoomKgAt(targetK, ax, ay) {
+  const k = Math.max(KG_MIN, Math.min(KG_MAX, targetK));
+  const ratio = k / kgView.k;
+  animateKgTo(k, ax - (ax - kgView.tx) * ratio, ay - (ay - kgView.ty) * ratio, 180);
+}
+
+kgEl.addEventListener('wheel', e => {
+  e.preventDefault();
+  const anchor = toKgPoint(e);
+  zoomKgAt(kgView.k * Math.exp(-e.deltaY * 0.0016), anchor.x, anchor.y);
+}, { passive: false });
+
+kgEl.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  const p = toKgPoint(e);
+  kgDragging = true;
+  kgMoved = false;
+  kgEl.dataset.sx = p.x;
+  kgEl.dataset.sy = p.y;
+  kgEl.dataset.tx0 = kgView.tx;
+  kgEl.dataset.ty0 = kgView.ty;
+  kgEl.classList.add('dragging');
+  kgEl.setPointerCapture(e.pointerId);
+});
+
+kgEl.addEventListener('pointermove', e => {
+  if (!kgDragging) return;
+  const p = toKgPoint(e);
+  const dx = p.x - Number(kgEl.dataset.sx), dy = p.y - Number(kgEl.dataset.sy);
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) kgMoved = true;
+  kgView.tx = Number(kgEl.dataset.tx0) + dx;
+  kgView.ty = Number(kgEl.dataset.ty0) + dy;
+  applyKgView();
+});
+
+kgEl.addEventListener('pointerup', () => {
+  kgDragging = false;
+  kgEl.classList.remove('dragging');
+  setTimeout(() => { kgMoved = false; }, 0);
+});
+
+document.getElementById('kg-in').addEventListener('click', () => zoomKgAt(kgView.k * 1.25, KG_W / 2, KG_H / 2));
+document.getElementById('kg-out').addEventListener('click', () => zoomKgAt(kgView.k / 1.25, KG_W / 2, KG_H / 2));
+document.getElementById('kg-reset').addEventListener('click', () => {
+  animateKgTo(1, 0, 0, 220);
+  App.toast('图谱视图已重置');
+});
+
+function drawKg() {
+  const el = document.getElementById('kg');
+  const W = 620, H = 396, pad = 46;
+  const px = n => n.x * (W - pad * 2) + pad;
+  const py = n => n.y * (H - pad * 2) + pad;
+  let g = '';
+  KG_DATA.edges.forEach(([a, b, kind]) => {
+    const n1 = KG_DATA.nodes.find(n => n.id === a), n2 = KG_DATA.nodes.find(n => n.id === b);
+    const bad = kind === 'risks' || kind === 'contradicts';
+    g += `<line x1="${px(n1)}" y1="${py(n1)}" x2="${px(n2)}" y2="${py(n2)}"
+      stroke="${bad ? '#E06A5C' : '#2E4045'}" stroke-width="${bad ? 1.4 : 1}"
+      ${bad ? 'stroke-dasharray="4 4"' : ''} opacity="${bad ? 0.65 : 0.85}"/>`;
+  });
+  KG_DATA.nodes.forEach(n => {
+    const c = KIND_COLOR[n.kind];
+    const on = selectedNode === n.id;
+    g += `<g class="kg-node" data-nid="${n.id}">
+      <circle cx="${px(n)}" cy="${py(n)}" r="${n.r}" fill="${c}" fill-opacity="${on ? 0.28 : 0.12}"
+        stroke="${c}" stroke-width="${on ? 2.4 : 1.1}"/>
+      <circle cx="${px(n)}" cy="${py(n)}" r="2.6" fill="${c}" opacity=".9"/>
+      <text x="${px(n)}" y="${py(n) + n.r + 13}" text-anchor="middle"
+        class="node-label ${n.kind === 'core' ? 'big' : ''}">${n.label}</text>
+    </g>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%"><g id="kg-viewport">${g}</g></svg>`;
+  applyKgView();
+
+  el.querySelectorAll('.kg-node').forEach(node => {
+    node.addEventListener('click', () => {
+      if (kgMoved) return;
+      const id = node.dataset.nid;
+      selectedNode = id;
+      const n = KG_DATA.nodes.find(x => x.id === id);
+      document.getElementById('kg-sel').textContent = n.label;
+      drawKg();
+      if (id in KEYWORD) {
+        state.q = KEYWORD[id];
+        document.getElementById('kw').value = state.q;
+        renderList();
+        App.toast(state.q ? '已按「' + state.q + '」过滤文献' : '已清除过滤条件');
+      } else {
+        App.toast('「' + n.label + '」暂未关联可检索关键词，已在图谱中高亮');
+      }
+    });
+  });
+}
+drawKg();
+
+/* ---------------- filters wiring ---------------- */
+document.getElementById('kw').addEventListener('input', e => {
+  state.q = e.target.value;
+  renderList();
+});
+
+document.querySelectorAll('#src-seg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#src-seg button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    state.src = b.dataset.src;
+    renderList();
+  });
+});
+
+document.querySelectorAll('#sort-seg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#sort-seg button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    state.sort = b.dataset.sort;
+    renderList();
+  });
+});
+
+document.getElementById('rel').addEventListener('input', e => {
+  state.minRel = Number(e.target.value);
+  document.getElementById('rel-val').textContent = state.minRel.toFixed(2);
+  renderList();
+});
+
+document.getElementById('reset').addEventListener('click', () => {
+  state = { q: '', src: 'all', minRel: 0.5, sort: 'rel' };
+  selectedNode = null;
+  document.getElementById('kw').value = '';
+  document.getElementById('rel').value = '0.5';
+  document.getElementById('rel-val').textContent = '0.50';
+  document.getElementById('kg-sel').textContent = '未选择';
+  document.querySelectorAll('#src-seg button').forEach((x, i) => x.classList.toggle('on', i === 0));
+  document.querySelectorAll('#sort-seg button').forEach((x, i) => x.classList.toggle('on', i === 0));
+  drawKg();
+  renderList();
+  App.toast('筛选条件已重置');
+});
+
+document.getElementById('import').addEventListener('click', () => {
+  App.toast('已接收 PDF，排队进入多模态解析队列');
+});
+
+document.getElementById('export').addEventListener('click', () => {
+  const bundle = MOCK.EVIDENCE.slice(0, 6).map(e => ({
+    id: e.id, type: e.type, source: e.source, confidence: e.confidence, hash: e.hash,
+  }));
+  App.openModal('证据集导出', `
+    <div class="code">${JSON.stringify({ project: MOCK.PROJECT.id, generated: '2026-11-04T10:52+08:00', evidence: bundle }, null, 2)}</div>
+    <div class="row mt12"><button class="btn btn-sm" data-copy='${JSON.stringify(bundle)}'>复制 JSON</button></div>
+  `, 'EVIDENCE BUNDLE · JSON');
+});
+
+/* ---------------- evidence cards ---------------- */
+const EV_IDS = ['E-002', 'E-003', 'E-005'];
+document.getElementById('ev-cards').innerHTML = EV_IDS.map(id => {
+  const e = MOCK.EVIDENCE.find(x => x.id === id);
+  return `<div class="list-item" style="align-items:flex-start;padding:16px;cursor:default">
+    <div class="li-main">
+      <div class="row" style="gap:8px;margin-bottom:6px">
+        <span class="tag ${e.type === 'paper' ? 'tag-calc' : 'tag-run'}">${e.type}</span>
+        <span style="font-size:12px;color:var(--text-1)">${e.title}</span>
+        <span class="mono" style="font-size:10px;color:var(--text-3);margin-left:auto">${e.id}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-2);line-height:1.7;border-left:2px solid var(--line-2);padding-left:9px">${e.quote}</div>
+      <div class="ev-meta" style="display:flex;gap:12px;margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--text-3)">
+        <span>${e.source}</span>
+        <span style="color:var(--accent)">conf ${App.fmt(e.confidence)}</span>
+        <span>${e.hash}</span>
+      </div>
+    </div>
+    <button class="btn btn-sm" data-toast="${e.id} 已挂载到 H-04，等待反证评审" style="margin-left:16px;flex:0 0 auto">挂载到 H-04</button>
+  </div>`;
+}).join('');
+
+renderList();
+</script>
+</body>
+</html>

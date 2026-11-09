@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>总览工作台 · 书生·探微 SciProbe</title>
+<link rel="stylesheet" href="assets/styles.css?v=20261109"/>
+</head>
+<body data-page="index">
+<main class="main">
+
+  <div class="page-head">
+    <div>
+      <h1>总览工作台</h1>
+      <div class="sub">P-2409 · 第 84 天 · 闭环阶段 4/5 「做」 · Intern-S2 397B · 7 智能体</div>
+    </div>
+    <div class="actions">
+      <div class="segmented" id="scope-switch">
+        <button class="on" data-scope="all">全项目</button>
+        <button data-scope="run">运行中</button>
+        <button data-scope="risk">风险</button>
+      </div>
+      <button class="btn" data-modal="memoryModal">记忆台账</button>
+      <button class="btn btn-primary" id="run-loop">运行闭环</button>
+    </div>
+  </div>
+
+  <!-- KPI strip -->
+  <section class="panel" style="margin-bottom:12px">
+    <div class="panel-body tight">
+      <div class="kpi-strip" id="kpi-strip"></div>
+    </div>
+  </section>
+
+  <!-- closed loop -->
+  <section class="panel" style="margin-bottom:12px">
+    <div class="panel-head">
+      <h3>科学发现闭环</h3>
+      <div class="right">
+        <span class="tag tag-run"><span class="dot dot-run"></span>阶段 4 进行中</span>
+        <button class="btn btn-sm btn-ghost" id="reset-loop" title="重置演示">重置</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="flow" id="flow"></div>
+      <div class="row-between mt16" style="align-items:flex-end">
+        <div style="flex:1">
+          <div class="row-between" style="margin-bottom:6px">
+            <span style="font-size:11px;color:var(--text-3);font-family:var(--mono);letter-spacing:.06em">总体进度</span>
+            <span class="mono" style="font-size:11px;color:var(--text-1)" id="loop-pct">68%</span>
+          </div>
+          <div class="progress"><i id="loop-bar" style="width:68%"></i></div>
+        </div>
+        <div class="row" style="gap:14px;margin-left:24px">
+          <div class="metric" style="align-items:flex-end">
+            <span class="label">迭代轮次</span><span class="value" style="font-size:16px">03<span style="font-size:10px;color:var(--text-3)">/∞</span></span>
+          </div>
+          <div class="metric" style="align-items:flex-end">
+            <span class="label">下一检查点</span><span class="value" style="font-size:16px">EIS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid g-2-1" style="margin-bottom:12px">
+    <!-- hypotheses -->
+    <section class="panel">
+      <div class="panel-head">
+        <h3>假设评估榜</h3>
+        <div class="right"><span class="tag" id="hypo-count">5 条</span></div>
+      </div>
+      <div class="panel-body tight" id="hypo-list"></div>
+      <div class="panel-foot">评分 = 先验 × 证据支持度 − 反证折损 · 由「反证评审 · 驳之」独立校准</div>
+    </section>
+
+    <!-- agents -->
+    <section class="panel">
+      <div class="panel-head">
+        <h3>智能体团队</h3>
+        <span class="hint" id="agent-count">7 AGENTS</span>
+        <div class="right"><a class="btn btn-sm btn-ghost" href="workspace.html">进入协作台 →</a></div>
+      </div>
+      <div class="panel-body tight" id="agent-list"></div>
+      <div class="panel-foot">
+        <span class="dot dot-run"></span>3 运行中 · <span class="dot dot-idle"></span>4 待命 · 上下文窗口 256K
+      </div>
+    </section>
+  </div>
+
+  <div class="grid g-2-1" style="margin-bottom:12px">
+    <section class="panel">
+      <div class="panel-head">
+        <h3>离子电导率 · Arrhenius 拟合</h3>
+        <span class="hint">σ = σ₀exp(−Ea/kT)</span>
+        <div class="right">
+          <div class="segmented" id="arr-switch">
+            <button class="on" data-view="arr">σ–T</button>
+            <button data-view="screen">组分筛选</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="chart" id="arr-chart"></div>
+        <div class="chart-note">实线 = 实验值；虚线 = 模型预测（pred.）。S-05 为三元候选，尚未完成实验闭环。</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h3>实时事件流</h3>
+        <div class="right"><button class="btn btn-sm btn-ghost" id="refresh-events">刷新</button></div>
+      </div>
+      <div class="panel-body" style="max-height:356px;overflow:auto">
+        <div class="timeline" id="event-list"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid g3">
+    <section class="panel">
+      <div class="panel-head"><h3>分层记忆</h3><span class="hint">L0 → L3</span></div>
+      <div class="panel-body tight" id="memory-list"></div>
+      <div class="panel-foot">只追加不覆盖 · 冲突并存 · 决策留回滚点</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h3>证据构成</h3><span class="hint">148 条</span></div>
+      <div class="panel-body">
+        <div class="stack" id="ev-bars"></div>
+      </div>
+      <div class="panel-foot">文献 61 · 计算 38 · 实验 29 · 人工复核 20</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h3>项目档案</h3></div>
+      <div class="panel-body">
+        <div class="kv" id="project-kv"></div>
+        <div class="mt16" style="border-top:1px solid var(--line);padding-top:12px">
+          <div style="font-size:10px;color:var(--text-3);font-family:var(--mono);letter-spacing:.08em;margin-bottom:6px">研究目标（PI 设定）</div>
+          <div style="font-size:12px;color:var(--text-2);line-height:1.7" id="project-goal"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<script src="assets/mock.js?v=20261109"></script>
+<script src="assets/charts.js?v=20261109"></script>
+<script src="assets/crystal.js?v=20261109"></script>
+<script src="assets/app.js?v=20261109"></script>
+<script src="assets/demo.js?v=20261109e"></script>
+<script>
+/* ---------- KPI ---------- */
+const kpi = MOCK.PROJECT.kpis;
+document.getElementById('kpi-strip').innerHTML = kpi.map((k, i) => `
+  <div class="kpi-cell" style="border-left:${i ? '1px solid var(--line)' : '0'}">
+    <div class="metric">
+      <span class="label">${k.label}</span>
+      <span class="value">${k.value}${k.unit ? `<small>${k.unit}</small>` : ''}</span>
+      <span class="delta ${k.trend}">${k.delta}</span>
+    </div>
+  </div>`).join('');
+
+/* ---------- flow ---------- */
+const flowEl = document.getElementById('flow');
+function renderFlow() {
+  flowEl.innerHTML = MOCK.STEPS.map((s, i) => {
+    const agents = s.agents.map(id => MOCK.AGENTS.find(a => a.id === id));
+    const state = s.status === 'done' ? 'done' : s.status === 'run' ? 'run' : 'idle';
+    return `
+      <div class="flow-step ${state}" data-step="${s.id}">
+        <div class="fs-top">
+          <span class="fs-name">${s.name}</span>
+          <span class="fs-state">${state === 'done' ? '完成' : state === 'run' ? '进行中' : '待启动'}</span>
+        </div>
+        <div class="fs-detail">${s.detail}</div>
+        <div class="progress" style="margin-top:10px"><i style="width:${Math.round(s.progress * 100)}%"></i></div>
+        <div class="fs-agents">${agents.map(a => `<span class="agent-avatar sm" data-role="${a.role}" title="${a.name}">${a.code}</span>`).join('')}</div>
+      </div>
+      ${i < MOCK.STEPS.length - 1 ? '<div class="flow-arrow"></div>' : ''}`;
+  }).join('');
+  flowEl.querySelectorAll('.flow-step').forEach(el => {
+    el.addEventListener('click', () => {
+      const map = { search: 'literature.html', read: 'literature.html', calc: 'compute.html', do: 'experiment.html', write: 'deliver.html' };
+      location.href = map[el.dataset.step] || 'workspace.html';
+    });
+  });
+}
+renderFlow();
+
+/* ---------- hypotheses + agents (scope-driven) ---------- */
+const statusMeta = {
+  supported: ['tag-run', '已支持'], testing: ['tag-calc', '验证中'],
+  rejected: ['tag-fail', '已否证'], open: ['tag-mute', '待验证'],
+};
+let scope = 'all';
+
+function scopedHypos() {
+  if (scope === 'run') return MOCK.HYPOTHESES.filter(h => h.status === 'testing' || h.status === 'open');
+  if (scope === 'risk') return MOCK.HYPOTHESES.filter(h => h.counter.length > 0 || h.status === 'rejected');
+  return MOCK.HYPOTHESES;
+}
+function scopedAgents() {
+  if (scope === 'run') return MOCK.AGENTS.filter(a => a.status === 'run');
+  if (scope === 'risk') {
+    const codes = new Set(MOCK.EVENTS
+      .filter(e => e.level === 'warn' || e.level === 'fail')
+      .map(e => e.actor.split(' · ')[1]));
+    return MOCK.AGENTS.filter(a => codes.has(a.code));
+  }
+  return MOCK.AGENTS;
+}
+function scopedEvents() {
+  if (scope === 'run') return MOCK.EVENTS.filter(e => e.level === 'run');
+  if (scope === 'risk') return MOCK.EVENTS.filter(e => e.level === 'warn' || e.level === 'fail');
+  return MOCK.EVENTS;
+}
+
+function renderHypos() {
+  const rows = scopedHypos();
+  document.getElementById('hypo-count').textContent = rows.length + ' 条';
+  const el = document.getElementById('hypo-list');
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty">当前视图无假设 · 切回「全项目」</div>';
+    return;
+  }
+  el.innerHTML = rows.map(h => {
+    const [cls, label] = statusMeta[h.status] || statusMeta.open;
+    return `<div class="list-item" data-h="${h.id}">
+      <div class="agent-avatar sm" data-role="${h.status === 'rejected' ? 'critic' : 'calc'}">${h.id.slice(2)}</div>
+      <div class="li-main">
+        <div class="li-title">${h.statement.length > 46 ? h.statement.slice(0, 46) + '…' : h.statement}</div>
+        <div class="li-sub">${h.id} · 先验 ${App.fmt(h.prior)} · 新颖度 ${App.fmt(h.novelty)} · 证据 ${h.evidence.length} / 反证 ${h.counter.length}</div>
+      </div>
+      <div style="width:96px;flex:0 0 auto">
+        <div class="bar-row" style="gap:6px">
+          <div class="bar-track"><i style="width:${Math.round(h.score * 100)}%;background:${h.status === 'rejected' ? 'var(--red)' : 'var(--accent-2)'}"></i></div>
+          <span class="bar-val" style="width:32px">${App.fmt(h.score)}</span>
+        </div>
+      </div>
+      <span class="tag ${cls}">${label}</span>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('[data-h]').forEach(item => {
+    item.addEventListener('click', () => {
+      const h = MOCK.HYPOTHESES.find(x => x.id === item.dataset.h);
+      const ev = h.evidence.map(id => MOCK.EVIDENCE.find(e => e.id === id)).filter(Boolean);
+      App.openModal(h.id + ' · 假设卡片', `
+        <div style="font-size:13px;line-height:1.8;color:var(--text-1)">${h.statement}</div>
+        <div class="kv mt16">
+          <span class="k">先验</span><span class="v">${App.fmt(h.prior)}</span>
+          <span class="k">后验评分</span><span class="v">${App.fmt(h.score)}</span>
+          <span class="k">新颖度</span><span class="v">${App.fmt(h.novelty)}</span>
+          <span class="k">状态</span><span class="v">${statusMeta[h.status][1]}</span>
+        </div>
+        <div style="margin-top:16px;font-size:11px;color:var(--text-3);font-family:var(--mono);letter-spacing:.08em">评审意见</div>
+        <div style="margin-top:6px;font-size:12px;color:var(--text-2);line-height:1.8">${h.note}</div>
+        <div style="margin-top:16px;font-size:11px;color:var(--text-3);font-family:var(--mono);letter-spacing:.08em">挂载证据</div>
+        <div class="stack mt8">${ev.map(e => `<div class="evidence">
+          <div class="ev-top"><span class="tag ${e.type === 'paper' ? 'tag-calc' : e.type === 'calc' ? 'tag-warn' : 'tag-run'}">${e.type}</span>
+          <span style="font-size:12px;color:var(--text-1)">${e.title}</span></div>
+          <div class="ev-quote">${e.quote}</div>
+          <div class="ev-meta"><span>${e.source}</span><span>conf ${App.fmt(e.confidence)}</span><span>${e.id}</span></div>
+        </div>`).join('')}</div>
+      `, 'HYPOTHESIS CARD');
+    });
+  });
+}
+
+function renderAgents() {
+  const rows = scopedAgents();
+  document.getElementById('agent-count').textContent = rows.length + ' AGENTS';
+  const el = document.getElementById('agent-list');
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty">当前视图无智能体</div>';
+    return;
+  }
+  el.innerHTML = rows.map(a => `
+    <div class="list-item" data-agent="${a.id}">
+      <div class="agent-avatar" data-role="${a.role}">${a.code}</div>
+      <div class="li-main">
+        <div class="li-title">${a.name}</div>
+        <div class="li-sub">${a.model}</div>
+      </div>
+      <div class="stack" style="align-items:flex-end;gap:2px">
+        <span class="tag ${a.status === 'run' ? 'tag-run' : 'tag-mute'}"><span class="dot ${a.status === 'run' ? 'dot-run' : 'dot-idle'}"></span>${a.status === 'run' ? '运行' : '待命'}</span>
+        <span class="mono" style="font-size:10px;color:var(--text-3)">${a.tokens}</span>
+      </div>
+    </div>`).join('');
+
+  el.querySelectorAll('[data-agent]').forEach(item => {
+    item.addEventListener('click', () => {
+      const a = MOCK.AGENTS.find(x => x.id === item.dataset.agent);
+      App.openModal(a.name, `
+        <div style="font-size:12px;color:var(--text-2);line-height:1.8">${a.desc}</div>
+        <div class="kv mt16">
+          <span class="k">基座模型</span><span class="v">${a.model}</span>
+          <span class="k">状态</span><span class="v">${a.status === 'run' ? '运行中' : '待命'}</span>
+          <span class="k">本轮 tokens</span><span class="v">${a.tokens}</span>
+          <span class="k">最近动作</span><span class="v">${a.lastRun} 前</span>
+        </div>
+        <div style="margin-top:16px;font-size:11px;color:var(--text-3);font-family:var(--mono);letter-spacing:.08em">已加载 AGENT SKILLS</div>
+        <div class="row wrap mt8">${a.skills.map(s => `<span class="tag">${s}</span>`).join('')}</div>
+      `, 'AGENT PROFILE');
+    });
+  });
+}
+
+/* ---------- chart ---------- */
+let arrView = 'arr';
+function renderArr() {
+  if (arrView === 'arr') {
+    Charts.line('#arr-chart', {
+      h: 300, xLabel: '1000/T (K⁻¹)', yLabel: 'log₁₀ σ (S/cm)',
+      series: MOCK.ARRHENIUS.map(s => ({ name: s.name, color: s.color, pts: s.pts, dashed: s.dashed })),
+      xTicks: 6, yTicks: 5,
+      fmtX: v => v.toFixed(2), fmtY: v => v.toFixed(1),
+    });
+  } else {
+    Charts.scatter('#arr-chart', {
+      h: 300, xLabel: 'σ_rt (mS/cm)', yLabel: 'Ea (eV)',
+      points: MOCK.SCREEN, xTicks: 6, yTicks: 5,
+      fmtX: v => v.toFixed(1), fmtY: v => v.toFixed(2),
+      zone: { x0: 1.0, x1: 3.0, y0: 0.16, y1: 0.22, label: '目标窗口' },
+    });
+  }
+}
+renderArr();
+document.querySelectorAll('#arr-switch button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#arr-switch button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    arrView = b.dataset.view;
+    renderArr();
+  });
+});
+
+/* ---------- events ---------- */
+function renderEvents() {
+  const rows = scopedEvents();
+  const el = document.getElementById('event-list');
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty" style="padding:18px">当前视图无事件</div>';
+    return;
+  }
+  el.innerHTML = rows.map((e, i) => `
+    <div class="tl-item ${i === 0 ? 'now' : ''}">
+      <div class="tl-time">${e.ts} · ${e.actor}</div>
+      <div class="tl-text"><b>${e.action}</b> — ${e.target}</div>
+    </div>`).join('');
+}
+
+function renderAll() {
+  renderHypos();
+  renderAgents();
+  renderEvents();
+}
+renderAll();
+
+document.getElementById('refresh-events').addEventListener('click', () => {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  MOCK.EVENTS.unshift({ ts: hh, actor: '均度 · CA', action: 'AIMD 采样推进', target: '900 K · 16.4/20 ps · MSD 线性度 0.986', level: 'run' });
+  renderEvents();
+  App.toast('事件流已刷新');
+});
+
+/* ---------- memory ---------- */
+document.getElementById('memory-list').innerHTML = MOCK.MEMORY.map(m => `
+  <div class="list-item" style="cursor:default">
+    <div class="li-main">
+      <div class="li-title">${m.layer}</div>
+      <div class="li-desc">${m.desc}</div>
+    </div>
+    <div class="stack" style="align-items:flex-end;gap:2px">
+      <span class="mono" style="font-size:11px;color:var(--text-1)">${m.count}</span>
+      <span class="mono" style="font-size:10px;color:var(--text-3)">${m.lastWrite}</span>
+    </div>
+  </div>`).join('');
+
+/* ---------- evidence bars ---------- */
+const evData = [
+  { label: '文献', n: 61, of: 148, color: 'var(--blue)' },
+  { label: '计算', n: 38, of: 148, color: 'var(--amber)' },
+  { label: '实验', n: 29, of: 148, color: 'var(--accent)' },
+  { label: '人工复核', n: 20, of: 148, color: 'var(--text-3)' },
+];
+document.getElementById('ev-bars').innerHTML = evData.map(d => `
+  <div class="bar-row">
+    <span class="bar-label">${d.label}</span>
+    <div class="bar-track"><i style="width:${Math.round(d.n / d.of * 100)}%;background:${d.color}"></i></div>
+    <span class="bar-val">${d.n}</span>
+  </div>`).join('') + `
+  <div style="margin-top:10px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:11px">
+    <span style="color:var(--text-3)">平均置信度</span>
+    <span class="mono" style="color:var(--accent)">0.857</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px">
+    <span style="color:var(--text-3)">低置信（&lt;0.7）</span>
+    <span class="mono" style="color:var(--amber)">11 条 · 已标记待复核</span>
+  </div>`;
+
+/* ---------- project kv ---------- */
+document.getElementById('project-kv').innerHTML = `
+  <span class="k">编号</span><span class="v">${MOCK.PROJECT.id}</span>
+  <span class="k">领域</span><span class="v">${MOCK.PROJECT.domain}</span>
+  <span class="k">PI</span><span class="v">${MOCK.PROJECT.pi}</span>
+  <span class="k">单位</span><span class="v" style="font-size:11px">${MOCK.PROJECT.org}</span>
+  <span class="k">启动</span><span class="v">${MOCK.PROJECT.startedAt}</span>
+  <span class="k">阶段</span><span class="v">${MOCK.PROJECT.phase}</span>`;
+document.getElementById('project-goal').textContent = MOCK.PROJECT.goal;
+
+/* ---------- modal ---------- */
+App.modals = {
+  memoryModal: {
+    title: '分层记忆台账', hint: 'LONG-HORIZON MEMORY',
+    body: `
+      <div style="font-size:12px;color:var(--text-2);line-height:1.8">
+        长周期记忆不是一条不断增长的对话，而是四层可检索、可审计的结构。每次任务收尾由统筹智能体做一次压缩：
+        原始证据留在 L0，可被重放；结论以带出处的数值进入 L1；假设与反证在 L2 并存；不可逆决策在 L3 留回滚点。
+      </div>
+      <div class="stack mt16">
+        ${MOCK.MEMORY.map(m => `<div class="evidence">
+          <div class="ev-top"><span class="tag tag-calc">${m.layer.split(' ')[0]}</span>
+          <span style="font-size:12px;color:var(--text-1)">${m.layer.slice(3)}</span>
+          <span class="mono" style="margin-left:auto;font-size:10px;color:var(--text-3)">${m.count}</span></div>
+          <div style="font-size:12px;color:var(--text-2);margin-top:6px">${m.desc}</div>
+          <div class="ev-meta"><span>最近写入 ${m.lastWrite}</span><span>append-only</span></div>
+        </div>`).join('')}
+      </div>
+      <div class="code mt16">memory.write(layer=L1, key="sigma_rt/S-03", value=2.10, unit="mS/cm",
+             source="E-009", confidence=0.89, hash="c4a7…2f81")
+# 冲突不覆盖：同 key 多值并存，由 critic 标注分歧根因（口径 / 时点 / 位置偏差）</div>`,
+  },
+};
+
+/* ---------- run actions ---------- */
+document.getElementById('run-loop').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  btn.textContent = '闭环运行中…';
+  let p = 68;
+  const t = setInterval(() => {
+    p = Math.min(96, p + 3);
+    document.getElementById('loop-bar').style.width = p + '%';
+    document.getElementById('loop-pct').textContent = p + '%';
+    if (p >= 96) {
+      clearInterval(t);
+      btn.disabled = false;
+      btn.textContent = '运行闭环';
+      App.toast('检查点 EIS 已排队 · 预计 26 min');
+    }
+  }, 240);
+});
+
+document.getElementById('reset-loop').addEventListener('click', () => {
+  document.getElementById('loop-bar').style.width = '68%';
+  document.getElementById('loop-pct').textContent = '68%';
+  App.toast('演示状态已重置');
+});
+
+document.querySelectorAll('#scope-switch button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#scope-switch button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    scope = b.dataset.scope;
+    renderAll();
+    const tips = {
+      all: '已显示全部假设 / 智能体 / 事件',
+      run: '已筛选：运行中智能体 · 验证中假设 · 运行事件',
+      risk: '已筛选：带反证的假设 · 风险事件 · 相关智能体',
+    };
+    App.toast(tips[scope] || '视图已切换');
+  });
+});
+</script>
+</body>
+</html>

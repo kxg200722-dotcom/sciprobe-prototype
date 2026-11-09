@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>智能体协作 · 书生·探微 SciProbe</title>
+<link rel="stylesheet" href="assets/styles.css?v=20261109"/>
+</head>
+<body data-page="workspace">
+<main class="main">
+
+  <div class="page-head">
+    <div>
+      <h1>智能体协作台</h1>
+      <div class="sub">任务 T-2109 · 验证 H-04 三元协同假设 · OpenClaw Gateway · 会话 08f3c1</div>
+    </div>
+    <div class="actions">
+      <span class="tag"><span class="dot dot-run"></span>3 agents active</span>
+      <span class="tag tag-calc" id="ctx-tokens">ctx 6,204 / 256K</span>
+      <button class="btn" id="stop-run">中断</button>
+      <button class="btn btn-primary" id="new-task">新建任务</button>
+    </div>
+  </div>
+
+  <div class="grid ws-grid">
+
+    <!-- ============ left: team + task graph ============ -->
+    <div class="stack" style="min-width:0">
+      <section class="panel">
+        <div class="panel-head"><h3>团队</h3><span class="hint">7</span></div>
+        <div class="panel-body tight" id="team"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h3>任务图</h3><span class="hint">DAG</span></div>
+        <div class="panel-body" style="padding:10px">
+          <div class="graph-wrap" style="height:184px;border-radius:4px" id="dag"></div>
+        </div>
+        <div class="panel-foot">统筹智能体动态重排 · 依赖未满足则阻塞</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h3>Skills 已装载</h3><span class="hint">12</span></div>
+        <div class="panel-body" style="padding:12px 16px">
+          <div id="skills" style="font-size:11px;color:var(--text-3);line-height:1.9"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ center: stream ============ -->
+    <section class="panel" style="min-height:calc(100vh - 132px)">
+      <div class="panel-head">
+        <h3>协作流</h3>
+        <span class="hint">THINK → ACT → OBSERVE</span>
+        <div class="right">
+          <span class="tag tag-run" id="stream-state">就绪</span>
+          <button class="btn btn-sm btn-ghost" id="scroll-bottom">↓</button>
+        </div>
+      </div>
+      <div class="panel-body tight" style="overflow:auto;flex:1" id="stream-wrap">
+        <div class="stream" id="stream"></div>
+      </div>
+      <div class="quick-chips" id="chips"></div>
+      <div class="composer">
+        <textarea id="input" placeholder="给团队一个科研目标，例如：为 H-04 补齐晶界反证并给出下一步实验建议"></textarea>
+        <button class="btn btn-primary" id="send">发送</button>
+      </div>
+    </section>
+
+    <!-- ============ right: context ============ -->
+    <div class="stack" style="min-width:0">
+      <section class="panel" style="flex:1">
+        <div class="panel-head">
+          <h3>上下文</h3>
+          <div class="right">
+            <div class="segmented" id="ctx-tabs">
+              <button class="on" data-tab="ev">证据</button>
+              <button data-tab="mem">记忆</button>
+              <button data-tab="log">日志</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-body" style="overflow:auto;max-height:calc(100vh - 200px)" id="ctx-body"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h3>本次预算</h3><span class="hint">BUDGET</span></div>
+        <div class="panel-body">
+          <div class="bar-row"><span class="bar-label">tokens</span>
+            <div class="bar-track"><i id="budget-tok" style="width:24%"></i></div><span class="bar-val" id="budget-tok-v">24%</span></div>
+          <div class="bar-row mt8"><span class="bar-label">工具调用</span>
+            <div class="bar-track"><i id="budget-call" style="width:18%;background:var(--amber)"></i></div><span class="bar-val" id="budget-call-v">3/16</span></div>
+          <div class="bar-row mt8"><span class="bar-label">墙钟</span>
+            <div class="bar-track"><i id="budget-time" style="width:12%;background:var(--blue)"></i></div><span class="bar-val" id="budget-time-v">7m</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+</main>
+
+<script src="assets/mock.js?v=20261109"></script>
+<script src="assets/charts.js?v=20261109"></script>
+<script src="assets/crystal.js?v=20261109"></script>
+<script src="assets/app.js?v=20261109"></script>
+<script src="assets/demo.js?v=20261109e"></script>
+<script>
+/* ---------------- left: team ---------------- */
+document.getElementById('team').innerHTML = MOCK.AGENTS.map(a => `
+  <div class="list-item" data-agent="${a.id}">
+    <div class="agent-avatar sm" data-role="${a.role}">${a.code}</div>
+    <div class="li-main">
+      <div class="li-title">${a.name.split(' · ')[0]}</div>
+      <div class="li-sub">${a.tokens} · ${a.lastRun}</div>
+    </div>
+    <span class="dot ${a.status === 'run' ? 'dot-run' : a.status === 'warn' ? 'dot-warn' : 'dot-idle'}"></span>
+  </div>`).join('');
+
+document.querySelectorAll('[data-agent]').forEach(el => {
+  el.addEventListener('click', () => {
+    const a = MOCK.AGENTS.find(x => x.id === el.dataset.agent);
+    App.openModal(a.name, `
+      <div style="font-size:12px;color:var(--text-2);line-height:1.8">${a.desc}</div>
+      <div class="kv mt16">
+        <span class="k">基座</span><span class="v">${a.model}</span>
+        <span class="k">Skills</span><span class="v">${a.skills.length} 个</span>
+        <span class="k">状态</span><span class="v">${a.status === 'run' ? '运行中' : '待命'}</span>
+      </div>
+      <div class="row wrap mt16">${a.skills.map(s => `<span class="tag">${s}</span>`).join('')}</div>
+    `, 'AGENT');
+  });
+});
+
+/* ---------------- left: DAG ---------------- */
+const DAG = [
+  { id: 'A', label: '文献补证', x: 0.16, y: 0.20, s: 'done' },
+  { id: 'B', label: 'NEB 复算', x: 0.16, y: 0.72, s: 'done' },
+  { id: 'C', label: 'AIMD 采样', x: 0.50, y: 0.46, s: 'run' },
+  { id: 'D', label: '晶界反证', x: 0.50, y: 0.10, s: 'warn' },
+  { id: 'E', label: '实验排产', x: 0.84, y: 0.46, s: 'idle' },
+];
+const DAG_EDGES = [['A','C'], ['B','C'], ['A','D'], ['C','E'], ['D','E']];
+(function drawDag() {
+  const el = document.getElementById('dag');
+  const colorOf = s => s === 'done' ? '#1F8C7C' : s === 'run' ? '#3BD9BE' : s === 'warn' ? '#E2A94F' : '#61756F';
+  const W = 240, H = 184;
+  const px = n => n.x * (W - 56) + 28, py = n => n.y * (H - 40) + 20;
+  let g = '';
+  DAG_EDGES.forEach(([a, b]) => {
+    const n1 = DAG.find(n => n.id === a), n2 = DAG.find(n => n.id === b);
+    g += `<line x1="${px(n1)}" y1="${py(n1)}" x2="${px(n2)}" y2="${py(n2)}" stroke="#2E4045" stroke-width="1"/>`;
+  });
+  DAG.forEach(n => {
+    g += `<circle cx="${px(n)}" cy="${py(n)}" r="5.5" fill="${colorOf(n.s)}" opacity=".85"/>`;
+    g += `<circle cx="${px(n)}" cy="${py(n)}" r="9" fill="none" stroke="${colorOf(n.s)}" stroke-width="1" opacity=".35"/>`;
+    g += `<text x="${px(n)}" y="${py(n) + 20}" text-anchor="middle" class="node-label">${n.label}</text>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%">${g}</svg>`;
+})();
+
+/* ---------------- left: skills ---------------- */
+const skillTags = ['多源检索', '证据去重', '图表数值回读', 'XRD 物相识别', 'DFT-NEB', 'AIMD 扩散',
+  '凸包稳定性', '配方搜索', '设备排程', '引用对齐', '反证构造', '置信度校准'];
+document.getElementById('skills').textContent = skillTags.join(' · ');
+
+/* ---------------- right: context tabs ---------------- */
+const EV_SET = ['E-006', 'E-009', 'E-007', 'E-002'];
+function renderCtx(tab) {
+  const body = document.getElementById('ctx-body');
+  if (tab === 'ev') {
+    body.innerHTML = `
+      <div class="row-between" style="margin-bottom:10px">
+        <span style="font-size:11px;color:var(--text-3);font-family:var(--mono)">当前挂载 4 条 · 反证 1 条</span>
+        <span class="tag tag-run">覆盖率 0.78</span>
+      </div>
+      <div class="stack">
+      ${EV_SET.map(id => {
+        const e = MOCK.EVIDENCE.find(x => x.id === id);
+        const kind = e.type === 'paper' ? 'tag-calc' : e.type === 'calc' ? 'tag-warn' : 'tag-run';
+        const isCounter = e.id === 'E-007';
+        return `<div class="evidence" data-ev="${e.id}" style="border-left:2px solid ${isCounter ? 'var(--red)' : 'var(--line-2)'}">
+          <div class="ev-top">
+            <span class="tag ${kind}">${e.type}</span>
+            <span style="font-size:12px;color:var(--text-1);line-height:1.4">${e.title}</span>
+          </div>
+          <div class="ev-quote">${e.quote}</div>
+          <div class="ev-meta">
+            <span>${e.source}</span><span style="color:${isCounter ? 'var(--red)' : 'var(--accent)'}">conf ${App.fmt(e.confidence)}</span>
+            <span>${isCounter ? 'COUNTER' : 'SUPPORT'}</span>
+          </div>
+        </div>`;
+      }).join('')}
+      </div>`;
+    body.querySelectorAll('[data-ev]').forEach(el => {
+      el.addEventListener('click', () => {
+        const e = MOCK.EVIDENCE.find(x => x.id === el.dataset.ev);
+        App.openModal(e.id + ' · 证据原文', `
+          <div style="font-size:13px;line-height:1.9;color:var(--text-1)">${e.quote}</div>
+          <div class="kv mt16">
+            <span class="k">来源</span><span class="v">${e.source}</span>
+            <span class="k">类型</span><span class="v">${e.type}</span>
+            <span class="k">置信度</span><span class="v">${App.fmt(e.confidence)}</span>
+            <span class="k">采集时间</span><span class="v">${e.ts}</span>
+            <span class="k">内容哈希</span><span class="v" style="font-size:10px">${e.hash}</span>
+          </div>
+          <div class="row mt16"><button class="btn btn-sm" data-copy="${e.hash}">复制哈希</button>
+          <button class="btn btn-sm" data-toast="已加入待复核队列">标记复核</button></div>
+        `, e.type.toUpperCase());
+      });
+    });
+  } else if (tab === 'mem') {
+    body.innerHTML = `<div class="stack">${MOCK.MEMORY.map(m => `
+      <div class="evidence" style="cursor:default">
+        <div class="ev-top"><span class="tag tag-calc">${m.layer.split(' ')[0]}</span>
+          <span style="font-size:12px;color:var(--text-1)">${m.layer.slice(3)}</span>
+          <span class="mono" style="margin-left:auto;font-size:10px;color:var(--text-3)">${m.count}</span></div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px;line-height:1.6">${m.desc}</div>
+      </div>`).join('')}</div>
+      <div class="code mt12">recall("H-04 反证", layer=L2, top_k=3)
+→ E-007 晶界非晶化 / E-002 Mg 浓度上限 / R-1037 评审退回</div>`;
+  } else {
+    body.innerHTML = `<div class="stack">${MOCK.RUNS.slice(0, 6).map(r => `
+      <div class="evidence" style="cursor:default">
+        <div class="ev-top">
+          <span class="tag ${r.status === 'ok' ? 'tag-run' : r.status === 'warn' ? 'tag-warn' : r.status === 'fail' ? 'tag-fail' : 'tag-calc'}">${r.status}</span>
+          <span class="mono" style="font-size:11px;color:var(--accent)">${r.tool}</span>
+          <span class="mono" style="margin-left:auto;font-size:11px;color:var(--text-3)">${r.duration}</span>
+        </div>
+        <div class="mono" style="font-size:10px;color:var(--text-3);margin-top:5px">${r.args}</div>
+        <div class="ev-meta"><span>${r.id}</span><span>${r.tokens} tok</span><span>${r.ts}</span></div>
+      </div>`).join('')}</div>`;
+  }
+}
+renderCtx('ev');
+document.querySelectorAll('#ctx-tabs button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#ctx-tabs button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    renderCtx(b.dataset.tab);
+  });
+});
+
+/* ---------------- stream engine ---------------- */
+const stream = document.getElementById('stream');
+const chips = document.getElementById('chips');
+let playing = false, played = false;
+const tokenEl = document.getElementById('ctx-tokens');
+let ctxTokens = 6204;
+
+const PRESETS = [
+  { key: 'verify', label: '验证 H-04', text: '验证 H-04：补齐晶界反证，给出三元组分是否进入实验的裁决' },
+  { key: 'screen', label: '组分筛选', text: '在 Mg 0.15–0.30 区间重新筛选组分，按 σ ≥ 1.5 mS/cm 与 Ea ≤ 0.21 eV 输出候选' },
+  { key: 'write', label: '生成初稿', text: '基于 S-03 与 S-05 数据，生成结果章节初稿并核对引用' },
+];
+chips.innerHTML = PRESETS.map(p => `<button class="quick-chip" data-preset="${p.key}">${p.label}</button>`).join('');
+
+const SCRIPT = [
+  { t: 0, kind: 'user', text: '验证 H-04：补齐晶界反证，给出三元组分是否进入实验的裁决' },
+
+  { t: 620, kind: 'agent', who: 'sup', text: '收到。任务拆为三条子线：① 补齐高 Mg 浓度的晶界非晶化反证（AIMD 900 K 长时采样）；② 复核 NEB 路径是否覆盖 Na2→Na1→Na3 三条通道；③ 由评审智能体给出裁决阈值。预算 16 次工具调用、9 万 tokens。' },
+
+  { t: 1500, kind: 'agent', who: 'calc', text: '先从已有轨迹继续，避免重跑。当前 AIMD 已推进到 16.4/20 ps @900 K，MSD 线性度 0.986，可以外推扩散系数。',
+    tool: { name: 'aimd_diffusivity', srv: 'aimd-diffusion · MCP', args: 'trajectory=R-1041, T=900K, fit=1.2–8.0 ps', result: 'D_Na = 1.42×10⁻⁶ cm²/s @900K · 95% CI [1.31, 1.53] · 非晶化体积分数 2.1%', status: 'ok', dur: '3m 41s' } },
+
+  { t: 2700, kind: 'agent', who: 'critic', text: '反证成立性判断：2.1% 非晶化体积分数低于我设定的 4.0% 阈值，但这是 900 K 加速老化下的值。需要做 300 K 等效换算，否则不能直接支持室温可用性。',
+    tool: { name: 'dft_static', srv: 'materials-dft · MCP', args: '构型=非晶界面模型, cutoff=520eV, k-mesh=2×2×1', result: '界面能 +0.061 eV/Å² · 300 K 等效失稳概率 6.7% · 判定：需实验旁证', status: 'warn', dur: '7m 12s' } },
+
+  { t: 4100, kind: 'agent', who: 'read', text: '文献侧找到旁证：Mg 掺杂高熵体系在 x(Mg) > 0.30 时才出现明显第二相，本项目 x=0.25 处于安全区。同时把 Fig.4(a) 的 Ea 数据点回读校对了一遍。',
+    tool: { name: 'extract_plot_values', srv: 'pdf-vision · MCP', args: 'arXiv:2511.08449 · Fig.4(a) · 坐标系自动识别', result: '回读 12 个数据点 · 与正文 Ea=0.200 eV 一致 · 残差 0.004 eV · 置信 0.91', status: 'ok', dur: '1m 08s' } },
+
+  { t: 5300, kind: 'agent', who: 'calc', text: 'NEB 三条通道复核完成。Na2→Na1 为最优路径 0.183 eV；Na3→Na2 为 0.241 eV，构成并联通道，有效势垒按调和平均修正后为 0.179 eV。',
+    tool: { name: 'dft_neb_barrier', srv: 'materials-dft · MCP', args: '3 paths × 5 images, CI-NEB, fmax=0.03 eV/Å', result: 'path-1 0.183 · path-2 0.241 · path-3 0.296 eV · effective 0.179 eV', status: 'ok', dur: '22m 08s' } },
+
+  { t: 6600, kind: 'agent', who: 'sup', text: '裁决：H-04 未触发否决条件，可进入实验。但晶界非晶化有 6.7% 的失稳概率，实验方案必须加一组 60°C/200 h 静置对照。已把该约束写进 L3 决策台账。' },
+
+  { t: 7500, kind: 'verdict', text: 'H-04 → 进入实验（条件性）', sub: '置信 0.71 → 0.79 · 新增证据 2 条 · 新增反证 1 条 · 决策 #D-011 已记账' },
+];
+
+function avatarFor(w) {
+  const a = MOCK.AGENTS.find(x => x.id === w);
+  return `<div class="agent-avatar" data-role="${a.role}">${a.code}</div>`;
+}
+
+function addMessage(step) {
+  if (step.kind === 'user') {
+    stream.insertAdjacentHTML('beforeend', `
+      <div class="msg user">
+        <div class="agent-avatar" data-role="sup" style="color:var(--text-2);border-color:var(--line-2);background:var(--bg-3)">ZH</div>
+        <div class="bubble">
+          <div class="who"><span>YOU · PI</span></div>
+          <div class="text">${step.text}</div>
+        </div>
+      </div>`);
+  } else if (step.kind === 'agent') {
+    const a = MOCK.AGENTS.find(x => x.id === step.who);
+    const toolHtml = step.tool ? `
+      <div class="tool-call ${step.tool.status === 'ok' ? 'ok' : step.tool.status === 'warn' ? 'warn' : ''}">
+        <div class="tc-head">
+          <span class="dot ${step.tool.status === 'ok' ? 'dot-run' : 'dot-warn'}"></span>
+          <span class="name">${step.tool.name}</span>
+          <span class="srv">${step.tool.srv}</span>
+          <span class="right"><span>${step.tool.dur}</span><span>▾</span></span>
+        </div>
+        <div class="tc-body"><span class="k">args  </span><span class="v">${step.tool.args}</span>
+<span class="k">result</span> <span class="v">${step.tool.result}</span></div>
+      </div>` : '';
+    stream.insertAdjacentHTML('beforeend', `
+      <div class="msg">
+        ${avatarFor(step.who)}
+        <div class="bubble">
+          <div class="who"><b>${a.name}</b><span>${a.model.split(' · ')[0]}</span><span>·</span><span>${a.tokens}</span></div>
+          <div class="text">${step.text}</div>
+          ${toolHtml}
+        </div>
+      </div>`);
+  } else {
+    stream.insertAdjacentHTML('beforeend', `
+      <div class="msg">
+        <div class="agent-avatar" data-role="critic" style="color:var(--accent);border-color:rgba(59,217,190,.4);background:var(--accent-soft)">
+          ${App.icon('shield', 13)}
+        </div>
+        <div class="bubble">
+          <div class="who"><b>${step.text}</b></div>
+          <div class="text" style="color:var(--text-3);font-family:var(--mono);font-size:11px;margin-top:4px">${step.sub}</div>
+        </div>
+      </div>`);
+  }
+  document.getElementById('stream-wrap').scrollTop = 1e6;
+  if (step.kind === 'agent') {
+    ctxTokens += 380 + Math.floor(Math.random() * 260);
+    tokenEl.textContent = `ctx ${ctxTokens.toLocaleString()} / 256K`;
+    const pct = Math.min(96, Math.round(ctxTokens / 12000 * 100));
+    document.getElementById('budget-tok').style.width = pct + '%';
+    document.getElementById('budget-tok-v').textContent = pct + '%';
+  }
+}
+
+let timers = [];
+let callCount = 0;
+
+function stopPlayback() {
+  timers.forEach(t => clearTimeout(t));
+  timers = [];
+  playing = false;
+}
+
+function play() {
+  stopPlayback();
+  playing = true;
+  played = true;
+  callCount = 0;
+  ctxTokens = 6204;
+  tokenEl.textContent = 'ctx 6,204 / 256K';
+
+  document.getElementById('stream-state').textContent = '运行中';
+  document.getElementById('stream-state').className = 'tag tag-run';
+  document.getElementById('budget-call').style.width = '0%';
+  document.getElementById('budget-call-v').textContent = '0/16';
+  document.getElementById('budget-tok').style.width = '24%';
+  document.getElementById('budget-tok-v').textContent = '24%';
+  stream.innerHTML = '';
+
+  SCRIPT.forEach((step, i) => {
+    const id = setTimeout(() => {
+      addMessage(step);
+      if (step.tool) {
+        callCount++;
+        document.getElementById('budget-call').style.width = Math.round(callCount / 16 * 100) + '%';
+        document.getElementById('budget-call-v').textContent = callCount + '/16';
+      }
+      if (i === SCRIPT.length - 1) {
+        playing = false;
+        document.getElementById('stream-state').textContent = '已完成';
+        document.getElementById('stream-state').className = 'tag tag-calc';
+        App.toast('任务 T-2109 已收敛 · 决策 D-011 已记账');
+      }
+    }, step.t);
+    timers.push(id);
+  });
+}
+
+document.getElementById('send').addEventListener('click', () => {
+  const v = document.getElementById('input').value.trim();
+  if (v) {
+    SCRIPT[0].text = v;
+    document.getElementById('input').value = '';
+  }
+  play();
+});
+
+document.getElementById('input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('send').click(); }
+});
+
+document.querySelectorAll('[data-preset]').forEach(b => {
+  b.addEventListener('click', () => {
+    const p = PRESETS.find(x => x.key === b.dataset.preset);
+    SCRIPT[0].text = p.text;
+    play();
+  });
+});
+
+document.getElementById('stop-run').addEventListener('click', () => {
+  if (!playing) { App.toast('当前没有运行中的任务', 'warn'); return; }
+  const kept = callCount;
+  stopPlayback();
+  document.getElementById('stream-state').textContent = '已中断';
+  document.getElementById('stream-state').className = 'tag tag-warn';
+  stream.insertAdjacentHTML('beforeend', `
+    <div class="msg">
+      <div class="agent-avatar" data-role="critic" style="color:var(--amber);border-color:rgba(226,169,79,.35);background:rgba(226,169,79,.08)">!</div>
+      <div class="bubble">
+        <div class="who"><b>人工中断</b><span>PI</span></div>
+        <div class="text" style="color:var(--text-2)">任务 T-2109 已中断。已保留 ${kept} 次工具调用记录与当前证据集，可随时从预设重新发起。</div>
+      </div>
+    </div>`);
+  document.getElementById('stream-wrap').scrollTop = 1e6;
+  App.toast('已中断 · ' + kept + ' 条工具调用记录已保留');
+});
+
+document.getElementById('scroll-bottom').addEventListener('click', () => {
+  document.getElementById('stream-wrap').scrollTop = 1e6;
+});
+
+document.getElementById('new-task').addEventListener('click', () => {
+  stopPlayback();
+  played = true;
+  callCount = 0;
+  ctxTokens = 6204;
+  tokenEl.textContent = 'ctx 6,204 / 256K';
+  document.getElementById('budget-call').style.width = '0%';
+  document.getElementById('budget-call-v').textContent = '0/16';
+  document.getElementById('budget-tok').style.width = '24%';
+  document.getElementById('budget-tok-v').textContent = '24%';
+
+  stream.innerHTML = `
+    <div class="msg">
+      <div class="agent-avatar" data-role="sup">SU</div>
+      <div class="bubble">
+        <div class="who"><b>统筹 · 秦衡</b><span>Intern-S2 397B</span></div>
+        <div class="text">新任务 T-2110 已创建。我已载入项目记忆 L1–L3 与 34 个 Agent Skills。请描述科研目标，或从下方预设开始。</div>
+      </div>
+    </div>`;
+  document.getElementById('stream-state').textContent = '就绪';
+  document.getElementById('stream-state').className = 'tag tag-run';
+  document.getElementById('input').value = '';
+  App.toast('新任务 T-2110 已创建 · 上下文已重置');
+});
+
+/* keep the demo alive: if user does nothing, auto-play once after 1.2 s */
+setTimeout(() => { if (!played) play(); }, 1200);
+</script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>实验与验证 · 书生·探微 SciProbe</title>
+<link rel="stylesheet" href="assets/styles.css?v=20261109"/>
+<style>
+  .recipe{
+    background:var(--bg-0); border:1px solid var(--line); border-radius:var(--r-ctl);
+    padding:12px 14px; font-family:var(--sans); font-size:11px; line-height:1.9; color:var(--text-2);
+    font-variant-numeric:tabular-nums;
+  }
+  .recipe .rk{color:var(--text-3); font-family:var(--mono); font-size:10px}
+  .dev{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line)}
+  .dev:last-child{border-bottom:0}
+  .dev .dmain{flex:1;min-width:0}
+  .dev .dname{font-size:12px;color:var(--text-1)}
+  .dev .dsub{font-family:var(--sans);font-size:10px;color:var(--text-3);margin-top:2px}
+  .form-row{display:grid;grid-template-columns:78px 1fr;gap:8px;align-items:center;margin-bottom:9px}
+  .form-row label{font-family:var(--sans);font-size:11px;color:var(--text-3);letter-spacing:.01em}
+</style>
+</head>
+<body data-page="experiment">
+<main class="main">
+
+  <div class="page-head">
+    <div>
+      <h1>实验与验证</h1>
+      <div class="sub">具身自动化实验线 · 2 台设备在线 · 批次 S-03 已闭环 · predicted 值不参与结论</div>
+    </div>
+    <div class="actions">
+      <span class="tag tag-run"><span class="dot dot-run"></span>阶段 4 / 5</span>
+      <button class="btn" id="ledger">导出实验台账</button>
+      <button class="btn btn-primary" id="advance">推进阶段</button>
+    </div>
+  </div>
+
+  <!-- samples -->
+  <section class="panel" style="margin-bottom:12px">
+    <div class="panel-head">
+      <h3>样本矩阵</h3><span class="hint">6 SAMPLES · 2 PREDICTED</span>
+      <div class="right"><span class="tag tag-calc">实测 3 / 预测 1 / 失效 1</span></div>
+    </div>
+    <div class="panel-body tight">
+      <table class="table">
+        <thead>
+          <tr><th>ID</th><th>样本</th><th>组分式</th><th>工艺</th>
+            <th style="text-align:right">σ_rt (mS/cm)</th><th style="text-align:right">Ea (eV)</th>
+            <th style="text-align:right">CCD (mA/cm²)</th><th>状态</th></tr>
+        </thead>
+        <tbody id="sample-body"></tbody>
+      </table>
+    </div>
+    <div class="panel-foot">点击行 → 右侧详情联动；S-05 为模型预测值，标注 predicted 且不进入结论</div>
+  </section>
+
+  <div class="grid g-2-1" style="margin-bottom:12px">
+    <div class="stack" style="min-width:0">
+
+      <!-- process window -->
+      <section class="panel">
+        <div class="panel-head">
+          <h3>工艺窗口</h3><span class="hint" id="proc-hint">SINTERING PROFILE</span>
+          <div class="right">
+            <div class="segmented" id="proc-seg">
+              <button class="on" data-p="profile">工艺曲线</button>
+              <button data-p="density">致密度–温度</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="chart" id="proc-chart"></div>
+          <div class="grid g3 mt16" id="detail-metrics"></div>
+        </div>
+        <div class="panel-foot" id="proc-foot">SPS：10 °C/s 升温至 1150 °C，保温 8 min，压力 50 MPa</div>
+      </section>
+
+      <!-- iteration log -->
+      <section class="panel">
+        <div class="panel-head">
+          <h3>闭环迭代记录</h3><span class="hint">3 ROUNDS</span>
+          <div class="right"><span class="tag tag-run">当前 轮次 03</span></div>
+        </div>
+        <div class="panel-body">
+          <div class="timeline">
+            <div class="tl-item">
+              <div class="tl-time">轮次 01 · 09-02 → 09-11 · 决策 D-009</div>
+              <div class="tl-text"><b>文献基线复现</b>：NZSP 实测 0.61 mS/cm，与文献一致；确认测量口径（25 °C、Pt 阻塞电极）。</div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-time">轮次 02 · 09-12 → 09-30 · 决策 D-010</div>
+              <div class="tl-text"><b>Mg 单掺</b>：S-02 达 1.74 mS/cm（文献 1.91，偏差 −8.9%，归因于致密度不足）；判定体相机制成立。</div>
+            </div>
+            <div class="tl-item now">
+              <div class="tl-time">轮次 03 · 10-01 → 进行中 · 决策 D-011</div>
+              <div class="tl-text"><b>Ga 共调制 + 三元候选</b>：S-03 达 2.10 mS/cm（晶界贡献降至 18%）；S-05 三元进入排产，附带 60 °C/200 h 老化对照。</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel-foot">每轮均保留回滚点：若 S-05 老化失败，退回两元方案 Mg+Ga</div>
+      </section>
+    </div>
+
+    <div class="stack" style="min-width:0">
+      <!-- devices -->
+      <section class="panel">
+        <div class="panel-head"><h3>设备与排程</h3><span class="hint">AUTOMATION LINE</span></div>
+        <div class="panel-body tight" id="dev-list"></div>
+        <div class="panel-foot">设备通过 A2A 委派；GUI 操作需状态断言 + 人工确认</div>
+      </section>
+
+      <!-- backfill -->
+      <section class="panel">
+        <div class="panel-head"><h3>结果回填</h3><span class="hint">MANUAL / INSTRUMENT</span></div>
+        <div class="panel-body">
+          <div class="form-row">
+            <label>样本</label>
+            <select class="input" id="f-sample"></select>
+          </div>
+          <div class="form-row">
+            <label>σ_rt</label>
+            <input class="input" id="f-sigma" type="number" step="0.01" value="2.10"/>
+          </div>
+          <div class="form-row">
+            <label>Ea</label>
+            <input class="input" id="f-ea" type="number" step="0.001" value="0.192"/>
+          </div>
+          <button class="btn btn-primary" id="f-submit" style="width:100%;margin-top:4px">提交回填</button>
+          <div style="margin-top:10px;font-size:11px;color:var(--text-3);line-height:1.7">
+            回填后自动生成证据条目并触发假设重排；σ ≥ 2.0 且 Ea ≤ 0.20 视为强化 H-04。
+          </div>
+        </div>
+      </section>
+
+      <!-- recipe -->
+      <section class="panel">
+        <div class="panel-head"><h3>配方卡</h3><span class="hint" id="recipe-id">S-03</span></div>
+        <div class="panel-body">
+          <div class="recipe" id="recipe"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="note" style="border:1px solid var(--line);border-left:2px solid var(--accent);background:var(--bg-1);padding:12px 16px;border-radius:var(--r-ctl);font-size:11px;color:var(--text-3)">
+    数据来源：自动化实验线回传（A2A）与人工回填。所有 predicted 值仅为模型预测，不进入论文结论；
+    每个回填动作生成一条证据并写入 L0/L1，可回放比对。
+  </div>
+
+</main>
+
+<script src="assets/mock.js?v=20261109"></script>
+<script src="assets/charts.js?v=20261109"></script>
+<script src="assets/app.js?v=20261109"></script>
+<script src="assets/demo.js?v=20261109e"></script>
+<script>
+/* ---------------- samples ---------------- */
+let samples = MOCK.SAMPLES.map(s => ({ ...s }));
+let current = 'S-03';
+
+document.getElementById('f-sample').innerHTML = MOCK.SAMPLES
+  .map(s => `<option value="${s.id}">${s.id} · ${s.name}</option>`).join('');
+document.getElementById('f-sample').value = 'S-05';
+
+const ST_TAG = { done: 'tag-run', warn: 'tag-warn', plan: 'tag-calc', fail: 'tag-fail' };
+const ST_TXT = { done: '已闭环', warn: '需复核', plan: '排产中', fail: '已否证' };
+
+function renderSamples() {
+  document.getElementById('sample-body').innerHTML = samples.map(s => `
+    <tr data-sid="${s.id}" style="cursor:pointer;${s.id === current ? 'background:var(--bg-2)' : ''}">
+      <td class="num">${s.id}</td>
+      <td><strong>${s.name}</strong><div style="font-size:11px;color:var(--text-3)">${s.note}</div></td>
+      <td class="num" style="font-size:10px;color:var(--text-3)">${s.recipe}</td>
+      <td style="font-size:10px;color:var(--text-3)">${s.method}</td>
+      <td class="num">${s.sig.toFixed(2)}${s.status === 'plan' ? ' <span class="tag tag-warn" style="margin-left:4px">predicted</span>' : ''}</td>
+      <td class="num">${s.ea.toFixed(3)}</td>
+      <td class="num">${s.ccd.toFixed(2)}</td>
+      <td><span class="tag ${ST_TAG[s.status]}">${ST_TXT[s.status]}</span></td>
+    </tr>`).join('');
+
+  document.querySelectorAll('[data-sid]').forEach(row => {
+    row.addEventListener('click', () => {
+      current = row.dataset.sid;
+      renderSamples();
+      renderDetail();
+      renderProc();
+    });
+  });
+}
+
+function renderDetail() {
+  const s = samples.find(x => x.id === current);
+  document.getElementById('recipe-id').textContent = s.id;
+  document.getElementById('recipe').innerHTML = `
+    <div><span class="rk">formula </span>${s.recipe}</div>
+    <div><span class="rk">route   </span>${s.method}</div>
+    <div><span class="rk">target  </span>σ ≥ 1.5 mS/cm · Ea ≤ 0.21 eV</div>
+    <div><span class="rk">note    </span>${s.note}</div>`;
+  document.getElementById('detail-metrics').innerHTML = `
+    <div class="metric"><span class="label">σ_rt</span><span class="value" style="font-size:20px">${s.sig.toFixed(2)}<small>mS/cm</small></span></div>
+    <div class="metric"><span class="label">Ea</span><span class="value" style="font-size:20px">${s.ea.toFixed(3)}<small>eV</small></span></div>
+    <div class="metric"><span class="label">CCD</span><span class="value" style="font-size:20px">${s.ccd.toFixed(2)}<small>mA/cm²</small></span></div>`;
+  document.getElementById('proc-foot').textContent =
+    `${s.id} · ${s.method} · ${s.status === 'plan' ? '尚未开炉，曲线为工艺设定值' : '工艺参数已归档'}`;
+}
+
+/* ---------------- process chart ---------------- */
+let procView = 'profile';
+const PROFILE = [[0,25],[50,275],[100,525],[150,775],[180,800],[210,800],[240,880],[275,1150],[285,1150],[300,1150],[330,980],[380,650],[440,25]];
+const DENSITY = [[800,88.2],[900,91.0],[1000,94.2],[1100,96.4],[1150,96.8],[1200,95.9]];
+
+function renderProc() {
+  const el = document.getElementById('proc-chart');
+  if (procView === 'profile') {
+    Charts.line('#proc-chart', {
+      h: 258,
+      series: [{ name: '炉温', color: '#3BD9BE', pts: PROFILE }],
+      xLabel: '时间 (min)', yLabel: '温度 (°C)',
+      xTicks: 6, yTicks: 5, fmtX: v => v.toFixed(0), fmtY: v => v.toFixed(0),
+      legend: false,
+      markers: [{ x: 285, y: 1150, r: 3, color: '#E2A94F', label: '保温 8 min · 50 MPa' }],
+    });
+    document.getElementById('proc-hint').textContent = 'SINTERING PROFILE';
+  } else {
+    Charts.line('#proc-chart', {
+      h: 258,
+      series: [{ name: '致密度', color: '#6FA5D6', pts: DENSITY }],
+      xLabel: '烧结温度 (°C)', yLabel: '相对致密度 (%)',
+      xTicks: 6, yTicks: 5, fmtX: v => v.toFixed(0), fmtY: v => v.toFixed(1),
+      legend: false,
+      bands: [{ from: 1080, to: 1170, color: 'rgba(59,217,190,.07)', label: '最佳窗口' }],
+    });
+    document.getElementById('proc-hint').textContent = 'DENSITY VS TEMPERATURE';
+  }
+}
+
+document.querySelectorAll('#proc-seg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#proc-seg button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    procView = b.dataset.p;
+    renderProc();
+  });
+});
+
+/* ---------------- devices ---------------- */
+const DEVICES = [
+  { n: '行星球磨机', s: 'idle', t: '空闲 · 预计可用 14:00', role: 'run' },
+  { n: '喷雾火焰合成线', s: 'run', t: '运行 S-05 前驱体 · 剩余 2 h', role: 'calc' },
+  { n: 'SPS 烧结炉', s: 'run', t: 'S-05 烧结 · 保温阶段 3/8 min', role: 'calc' },
+  { n: '电化学工作站', s: 'idle', t: '空闲 · 已排 EIS 16:30', role: 'idle' },
+];
+document.getElementById('dev-list').innerHTML = DEVICES.map(d => `
+  <div class="dev" data-toast="${d.n}：${d.t}">
+    <span class="dot ${d.s === 'run' ? 'dot-run' : d.s === 'idle' ? 'dot-idle' : 'dot-warn'}"></span>
+    <div class="dmain">
+      <div class="dname">${d.n}</div>
+      <div class="dsub">${d.t}</div>
+    </div>
+    <span class="tag ${d.s === 'run' ? 'tag-run' : 'tag-mute'}">${d.s === 'run' ? '运行' : '空闲'}</span>
+  </div>`).join('');
+
+/* ---------------- backfill ---------------- */
+document.getElementById('f-submit').addEventListener('click', () => {
+  const id = document.getElementById('f-sample').value;
+  const sig = Number(document.getElementById('f-sigma').value);
+  const ea = Number(document.getElementById('f-ea').value);
+  if (!sig || !ea) { App.toast('请填写有效数值', 'warn'); return; }
+
+  const s = samples.find(x => x.id === id);
+  s.sig = sig;
+  s.ea = ea;
+  s.status = 'done';
+  s.note = '人工回填 · 已生成证据 E-011';
+  renderSamples();
+  renderDetail();
+  current = id;
+  App.toast('已回填 ' + id + ' 并挂载证据 E-011');
+
+  if (sig >= 2.0 && ea <= 0.20) {
+    setTimeout(() => App.toast('H-04 证据权重 +1 · 评分 0.71 → 0.76'), 900);
+  } else {
+    setTimeout(() => App.toast('未达强化阈值 · H-04 评分维持', 'warn'), 900);
+  }
+});
+
+/* ---------------- page actions ---------------- */
+document.getElementById('advance').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  btn.textContent = '推进中…';
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = '推进阶段';
+    App.toast('已进入阶段 5「写」· 图表与证据已锁定');
+  }, 1200);
+});
+
+document.getElementById('ledger').addEventListener('click', () => {
+  App.openModal('实验台账导出', `
+    <div class="code">${MOCK.EXPTS.map(x => `${x.ts}  ${x.sample}  ${x.stage}  ${x.metric}=${x.value}${x.unit}  [${x.status}]`).join('\n')}</div>
+    <div class="row mt12"><button class="btn btn-sm" data-toast="台账已导出为 CSV">导出 CSV</button></div>
+  `, '7 条动作 · 含回滚点');
+});
+
+renderSamples();
+renderDetail();
+renderProc();
+</script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>成果与生态 · 书生·探微 SciProbe</title>
+<link rel="stylesheet" href="assets/styles.css?v=20261109"/>
+<style>
+  .paper-sheet{
+    background:#E9E6DE; color:#1B2320; border-radius:4px; padding:26px 30px;
+    font-family:Georgia,"Songti SC","SimSun",serif; height:100%; overflow:auto;
+  }
+  .paper-sheet .p-journal{font-family:var(--mono); font-size:10px; letter-spacing:.16em;
+    text-transform:uppercase; color:#5C6B64; border-bottom:1px solid #C9C4B8; padding-bottom:10px;
+    display:flex; justify-content:space-between}
+  .paper-sheet h2{font-size:16px; line-height:1.45; margin:16px 0 10px; font-weight:600; letter-spacing:-.01em}
+  .paper-sheet .p-authors{font-size:11px; color:#4A5851; margin-bottom:14px; font-family:var(--mono)}
+  .paper-sheet .p-abs{font-size:12px; line-height:1.85; color:#2C3733; text-align:justify}
+  .paper-sheet .p-abs b{font-weight:700}
+  .paper-sheet .p-sec{font-size:13px; font-weight:600; margin:18px 0 6px; color:#16201C}
+  .paper-sheet p{font-size:12px; line-height:1.9; margin:0 0 8px; text-align:justify; color:#2C3733}
+  .paper-sheet .p-fig{background:#DDD9CD; border:1px solid #C9C4B8; border-radius:3px; padding:12px;
+    font-family:var(--mono); font-size:11px; color:#5C6B64; text-align:center; margin:10px 0}
+  .paper-sheet .p-cite{font-size:10px; color:#5C6B64}
+  .paper-sheet .p-hl{background:rgba(59,217,190,.28); padding:0 2px; border-radius:1px}
+  .sec-item{display:flex; align-items:center; gap:10px; padding:9px 16px; border-bottom:1px solid var(--line); cursor:pointer}
+  .sec-item:last-child{border-bottom:0}
+  .sec-item:hover{background:var(--bg-2)}
+  .sec-item.on{background:var(--bg-2); box-shadow:inset 2px 0 0 var(--accent)}
+  .sec-item .si-idx{font-family:var(--mono); font-size:10px; color:var(--text-3); width:18px}
+  .sec-item .si-name{font-size:12px; color:var(--text-1); flex:1}
+  .sec-item .si-src{font-family:var(--sans); font-size:11px; color:var(--text-3)}
+  .proto-node{display:flex; align-items:center; gap:10px; padding:8px 16px; border-bottom:1px solid var(--line)}
+  .proto-node:last-child{border-bottom:0}
+  .proto-node .pn-kind{font-family:var(--mono); font-size:10px; letter-spacing:.08em; color:var(--text-3); width:44px}
+  .proto-node .pn-name{font-size:12px; color:var(--text-1); flex:1}
+</style>
+</head>
+<body data-page="deliver">
+<main class="main">
+
+  <div class="page-head">
+    <div>
+      <h1>成果与生态</h1>
+      <div class="sub">MANUSCRIPT · REPRODUCIBILITY TOKEN · MCP / A2A / SKILLS</div>
+    </div>
+    <div class="actions">
+      <span class="tag tag-run"><span class="dot dot-run"></span>稿件 v0.4</span>
+      <button class="btn" id="replay">回放验证</button>
+      <button class="btn btn-primary" id="gen">生成段落</button>
+    </div>
+  </div>
+
+  <div class="grid g-2-1" style="margin-bottom:12px">
+
+    <!-- manuscript -->
+    <section class="panel" style="min-height:560px">
+      <div class="panel-head">
+        <h3>论文草稿</h3>
+        <span class="hint">TARGET: ADV. ENERGY MATER. (LETTER)</span>
+        <div class="right">
+          <span class="tag tag-mute">1,842 词</span>
+          <button class="btn btn-sm btn-ghost" id="bibtex">BibTeX</button>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns:190px minmax(0,1fr); gap:0; flex:1; min-height:0">
+        <div style="border-right:1px solid var(--line); overflow:auto" id="sections"></div>
+        <div style="padding:14px; overflow:auto; background:var(--bg-0)">
+          <div class="paper-sheet" id="sheet"></div>
+        </div>
+      </div>
+      <div class="panel-foot">每个论断挂载证据 ID；图表编号与证据库双向对齐；未验证结论自动加「predicted」标记</div>
+    </section>
+
+    <!-- reproducibility -->
+    <div class="stack" style="min-width:0">
+      <section class="panel">
+        <div class="panel-head"><h3>可复现凭证</h3><span class="hint">REPRO TOKEN</span></div>
+        <div class="panel-body">
+          <div class="row" style="gap:8px;margin-bottom:12px">
+            <span class="dot dot-run"></span>
+            <span style="font-size:12px;color:var(--text-1)">链路可回放 · 3/3 通过</span>
+            <span class="tag tag-run" style="margin-left:auto">SEALED</span>
+          </div>
+          <div class="kv">
+            <span class="k">token</span><span class="v" style="font-size:10px">rp-7f3a-91c4-2e08</span>
+            <span class="k">模型</span><span class="v" style="font-size:10px">Intern-S2 · 397B</span>
+            <span class="k">工具版本</span><span class="v" style="font-size:10px">mcp@1.4 / a2a@1.0</span>
+            <span class="k">随机种子</span><span class="v">20260918</span>
+            <span class="k">温度 / top-p</span><span class="v">0.2 / 0.9</span>
+            <span class="k">证据快照</span><span class="v">148 条 · 4.2 MB</span>
+            <span class="k">代码提交</span><span class="v" style="font-size:10px">a91f0c2</span>
+          </div>
+          <div class="row mt12" style="gap:6px">
+            <button class="btn btn-sm" data-copy="rp-7f3a-91c4-2e08">复制 token</button>
+            <button class="btn btn-sm" data-toast="凭证已打包为 .zip">打包快照</button>
+          </div>
+          <div class="code mt12" style="font-size:10px">repro.verify(token="rp-7f3a-91c4-2e08")
+├─ env.pin        ✓ image sha256:3b9e…
+├─ tool.schema    ✓ 8/8 MCP servers
+├─ evidence.hash  ✓ 148/148 未漂移
+├─ rerun.neb      ✓ ΔE 0.000 eV
+└─ rerun.eis      ✓ σ 偏差 1.4%</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h3>图表清单</h3><span class="hint">4 FIG / 1 TABLE</span></div>
+        <div class="panel-body tight" id="figlist"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ecosystem -->
+  <div class="grid g-1-2">
+    <section class="panel">
+      <div class="panel-head"><h3>协议拓扑</h3><span class="hint">MCP · A2A</span></div>
+      <div class="panel-body">
+        <div class="graph-wrap" style="height:212px;border-radius:4px" id="topo"></div>
+        <div class="chart-legend" style="margin-top:10px">
+          <span><i style="background:#3BD9BE"></i>MCP（工具层）</span>
+          <span><i style="background:#E2A94F"></i>A2A（智能体间）</span>
+          <span><i style="background:#93A6A1"></i>本地能力</span>
+        </div>
+      </div>
+      <div class="panel-foot">MCP 管「智能体→工具」，A2A 管「智能体→智能体」，二者互补</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h3>生态注册表</h3><span class="hint">OPEN ECOSYSTEM</span>
+        <div class="right">
+          <div class="segmented" id="eco-tabs">
+            <button class="on" data-tab="mcp">MCP</button>
+            <button data-tab="skill">Skills</button>
+            <button data-tab="a2a">A2A</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-body tight" style="overflow:auto;max-height:300px" id="eco-body"></div>
+      <div class="panel-foot">技能与工具均可被第三方复用到其他科研课题 · 版本化 + 签名校验</div>
+    </section>
+  </div>
+
+</main>
+
+<script src="assets/mock.js?v=20261109"></script>
+<script src="assets/charts.js?v=20261109"></script>
+<script src="assets/app.js?v=20261109"></script>
+<script src="assets/demo.js?v=20261109e"></script>
+<script>
+/* ---------------- manuscript sections ---------------- */
+const SECTIONS = [
+  { id: 'abs', idx: '00', name: 'Abstract', src: '6 论断 · 4 引用', words: 186 },
+  { id: 'intro', idx: '01', name: 'Introduction', src: '18 论断 · 22 引用', words: 412 },
+  { id: 'method', idx: '02', name: 'Methods', src: '9 步骤 · 5 工具', words: 356 },
+  { id: 'res', idx: '03', name: 'Results', src: '12 论断 · 3 图表', words: 528, on: true },
+  { id: 'disc', idx: '04', name: 'Discussion', src: '7 论断 · 2 反证', words: 284 },
+  { id: 'concl', idx: '05', name: 'Conclusion', src: '3 论断', words: 76 },
+];
+
+const BODY = {
+  abs: `
+    <div class="p-journal"><span>Adv. Energy Mater. · Letter</span><span>v0.4 · 2026-11-04</span></div>
+    <h2>Triple-site modulation of NASICON electrolytes for high-rate solid-state sodium batteries</h2>
+    <div class="p-authors">Y. Zhou, H. Qin, Y. Suo, B. Ming, D. Jun, S. Shi, W. Xiu — SciProbe Agent Team</div>
+    <div class="p-abs"><b>Abstract.</b> NASICON-type Na₃Zr₂Si₂PO₁₂ offers a compelling structural host for solid-state sodium electrolytes, yet its room-temperature ionic conductivity remains limited by correlated bulk and grain-boundary resistance. Here we report a triple-site modulation strategy — Mg substitution at the Zr site, Ga-assisted grain-boundary glass phase, and dilute K substitution at the Na site — identified by a closed-loop scientific agent that couples literature mining, DFT-NEB, AIMD and automated experimentation. The optimized composition delivers <span class="p-hl">2.10 mS cm⁻¹ at 25 °C</span> with an activation energy of 0.192 eV in the two-site variant, and a predicted 2.40 mS cm⁻¹ for the triple-site candidate currently under experimental closure.</div>
+    <div class="p-fig">Figure 1 · Closed-loop discovery pipeline (agent DAG → DFT → synthesis → EIS)</div>
+  `,
+  intro: `
+    <div class="p-journal"><span>01 · Introduction</span><span>412 words</span></div>
+    <div class="p-sec">1. Introduction</div>
+    <p>Solid-state sodium batteries inherit the abundance and cost advantages of sodium chemistry, but the electrolyte remains the limiting component. NASICON-type Na₃Zr₂Si₂PO₁₂ (NZSP) combines a rigid 3D framework with open Na⁺ migration channels; its room-temperature conductivity is nevertheless reported near 0.61 mS cm⁻¹, an order of magnitude below the 10⁻² S cm⁻¹ regime targeted by practical cells.<span class="p-cite"> [1]</span></p>
+    <p>Two resistance channels dominate: the bulk framework, controlled by the bottleneck size of the Na2–Na1 pathway; and the grain boundary, controlled by second-phase wettability and densification. Prior work addressed them separately — Mg substitution for the bulk<span class="p-cite"> [2]</span>, Ga modulation for the boundary<span class="p-cite"> [3]</span>, K substitution for channel widening<span class="p-cite"> [4]</span>. Whether these mechanisms compose, and at what doping limits they conflict, has not been resolved experimentally.</p>
+    <p>We argue that the composition space is too large for sequential human screening and too coupled for single-objective optimization. We therefore formulate the problem as a closed-loop discovery task and hand it to a multi-agent scientific system, retaining human authority only at irreversible decision points.</p>
+  `,
+  method: `
+    <div class="p-journal"><span>02 · Methods</span><span>356 words</span></div>
+    <div class="p-sec">2. Methods</div>
+    <p><b>2.1 Agent orchestration.</b> A supervisor agent decomposes the objective into a DAG of search, read, compute, experiment and write subtasks, executed on a local-first harness with MCP tool servers and A2A federation to external instruments.</p>
+    <p><b>2.2 First-principles calculations.</b> Structure relaxation and CI-NEB barrier evaluations were performed with the materials-dft MCP server (PBE, 520 eV cutoff, 2×2×1 k-mesh, fmax 0.03 eV Å⁻¹). AIMD trajectories of 20 ps at 600–900 K were analysed for diffusivity and amorphization fraction.</p>
+    <p><b>2.3 Synthesis and characterization.</b> Powders were prepared by spray-flame synthesis and densified by spark plasma sintering at 1,150 °C. EIS was measured from 1 Hz to 1 MHz over 25–120 °C; symmetric cells were cycled to determine the critical current density.</p>
+    <p><b>2.4 Verification.</b> Every quantitative claim is bound to an evidence record with source identifier, confidence and content hash; the full chain is sealed as a reproducibility token.</p>
+  `,
+  res: `
+    <div class="p-journal"><span>03 · Results</span><span>528 words</span></div>
+    <div class="p-sec">3. Results</div>
+    <p>The agent screened 62 candidate compositions against a two-objective window (σ ≥ 1.5 mS cm⁻¹, Ea ≤ 0.21 eV). Mg substitution at x = 0.25 reproduces the reported enhancement<span class="p-cite"> [2]</span>, giving 1.74 mS cm⁻¹ (8.9% below literature) with Ea = 0.204 eV. Introducing 0.5 wt% Ga₂O₃ reduces the grain-boundary contribution from 41% to 18% and raises the total conductivity to <span class="p-hl">2.10 mS cm⁻¹</span>.</p>
+    <div class="p-fig">Figure 2 · (a) PXRD patterns with Rietveld-consistent phase assignment; (b) Arrhenius plots of S-01/S-02/S-03; (c) Nyquist response at 25 °C</div>
+    <p>CI-NEB along three symmetry-distinct pathways gives 0.183, 0.241 and 0.296 eV; a harmonic-mean correction for parallel channels yields an effective barrier of 0.179 eV for the triple-site candidate. AIMD at 900 K returns D_Na = 1.42×10⁻⁶ cm² s⁻¹ and an amorphization volume fraction of 2.1%, below the 4.0% veto threshold but equivalent to a 6.7% instability probability at 300 K.</p>
+    <p>The referee agent therefore rejected unconditional acceptance and attached a mandatory ageing control (60 °C, 200 h). The candidate S-05 enters synthesis with conditional approval — a decision recorded in the ledger as D-011.</p>
+    <div class="p-fig">Figure 3 · NEB energy profiles for undoped, Mg-only and triple-site compositions</div>
+  `,
+  disc: `
+    <div class="p-journal"><span>04 · Discussion</span><span>284 words</span></div>
+    <div class="p-sec">4. Discussion</div>
+    <p>Three observations are worth isolating. First, the gain from grain-boundary engineering (S-02 → S-03) exceeds the gain from further bulk doping, which argues against optimizing the framework alone. Second, the K substitution carries a deferred cost: the conductivity benefit at short time is accompanied by monoclinic ZrO₂ nucleation after 200 h at 60 °C, so its inclusion must be justified by rate capability rather than steady-state conductivity.</p>
+    <p>Third, the closed loop changed the order of experiments. Because the agent could re-read the same literature figure, re-fit the same NEB profile and re-run the same ageing protocol without drift, the disagreement between reported and reproduced conductivity (−8.9%) was localized to densification rather than to intrinsic transport.</p>
+    <p>We do not claim that the triple-site composition is optimal; we claim that the search is auditable. The distinction matters: an unauditable optimum cannot be improved, only replaced.</p>
+  `,
+  concl: `
+    <div class="p-journal"><span>05 · Conclusion</span><span>76 words</span></div>
+    <div class="p-sec">5. Conclusion</div>
+    <p>A closed-loop scientific agent composed literature evidence, first-principles transport calculations and automated experimentation into a single auditable chain, and identified a triple-site NASICON composition predicted to reach 2.40 mS cm⁻¹ at room temperature. The remaining step — experimental closure of S-05 with a 200 h ageing control — is scheduled, not assumed.</p>
+  `,
+};
+
+const sheet = document.getElementById('sheet');
+const sectionsEl = document.getElementById('sections');
+function renderSections(active) {
+  sectionsEl.innerHTML = SECTIONS.map(s => `
+    <div class="sec-item ${s.id === active ? 'on' : ''}" data-sec="${s.id}">
+      <span class="si-idx">${s.idx}</span>
+      <div style="flex:1;min-width:0">
+        <div class="si-name">${s.name}</div>
+        <div class="si-src">${s.src}</div>
+      </div>
+      <span class="mono" style="font-size:11px;color:var(--text-3)">${s.words}w</span>
+    </div>`).join('');
+  sectionsEl.querySelectorAll('[data-sec]').forEach(el => {
+    el.addEventListener('click', () => {
+      renderSections(el.dataset.sec);
+      sheet.innerHTML = BODY[el.dataset.sec] || '';
+    });
+  });
+}
+renderSections('res');
+sheet.innerHTML = BODY.res;
+
+document.getElementById('gen').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  btn.textContent = '撰写中…';
+  const extra = `<p style="color:#1F6B5C"><b>[agent-draft]</b> Cross-checking the claim against E-006 and E-009: the effective barrier of 0.179 eV is consistent with the measured 0.192 eV within the 0.013 eV standard error of the Arrhenius fit, supporting the assignment of the third pathway as a parallel channel rather than a distinct mechanism.</p>`;
+  setTimeout(() => {
+    sheet.insertAdjacentHTML('beforeend', extra);
+    sheet.scrollTop = 1e6;
+    btn.disabled = false;
+    btn.textContent = '生成段落';
+    App.toast('新增 1 段 · 2 条引用已自动对齐');
+  }, 1400);
+});
+
+document.getElementById('bibtex').addEventListener('click', () => {
+  const bib = `@article{zhou2026sciprobe,
+  title   = {Triple-site modulation of NASICON electrolytes for high-rate solid-state sodium batteries},
+  author  = {Zhou, Yan and Qin, Heng and Suo, Yuan and Ming, Bian and Jun, Du and Shi, Shi and Xiu, Wen},
+  journal = {Advanced Energy Materials},
+  year    = {2026},
+  note    = {Generated by SciProbe agent team; repro token rp-7f3a-91c4-2e08}
+}`;
+  App.openModal('BibTeX 引用', `<div class="code">${bib.replace(/</g, '&lt;')}</div>
+    <div class="row mt12"><button class="btn btn-sm" data-copy="rp-7f3a-91c4-2e08">复制 token</button></div>`, 'CITATION');
+});
+
+/* ---------------- figures ---------------- */
+const FIGS = [
+  { id: 'Fig.1', name: '闭环发现流程', src: '系统架构', status: 'done', ver: 'v3' },
+  { id: 'Fig.2', name: 'PXRD / Arrhenius / Nyquist', src: 'S-01 · S-02 · S-03', status: 'done', ver: 'v2' },
+  { id: 'Fig.3', name: 'NEB 能垒对比', src: '3 条路径 · CI-NEB', status: 'done', ver: 'v2' },
+  { id: 'Fig.4', name: '长循环与相分离', src: '等待 200 h 老化', status: 'run', ver: 'v1' },
+  { id: 'Table 1', name: '候选组分电化学指标', src: '6 个样本', status: 'done', ver: 'v2' },
+];
+document.getElementById('figlist').innerHTML = FIGS.map(f => `
+  <div class="list-item" style="cursor:pointer" data-toast="${f.id} 已加入投稿包">
+    <div class="li-main">
+      <div class="li-title"><span class="mono" style="font-size:11px;color:var(--accent)">${f.id}</span>${f.name}</div>
+      <div class="li-sub">${f.src} · ${f.ver}</div>
+    </div>
+    <span class="tag ${f.status === 'done' ? 'tag-run' : 'tag-calc'}">${f.status === 'done' ? '就绪' : '待数据'}</span>
+  </div>`).join('');
+
+document.getElementById('replay').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  btn.textContent = '回放中 0%';
+  let p = 0;
+  const t = setInterval(() => {
+    p += 10;
+    btn.textContent = `回放中 ${p}%`;
+    if (p >= 100) {
+      clearInterval(t);
+      btn.disabled = false;
+      btn.textContent = '回放验证';
+      App.toast('回放完成 · 3/3 段一致 · 无漂移');
+    }
+  }, 180);
+});
+
+/* ---------------- protocol topology ---------------- */
+(function drawTopo() {
+  const el = document.getElementById('topo');
+  const W = 520, H = 212;
+  const layers = [
+    { x: 54, label: 'PI', nodes: [['浏览器 / CLI', '#93A6A1']] },
+    { x: 168, label: 'HARNESS', nodes: [['OpenClaw Gateway', '#93A6A1']] },
+    { x: 296, label: 'AGENTS', nodes: [['统筹', '#3BD9BE'], ['搜/读', '#3BD9BE'], ['算/做', '#3BD9BE']] },
+    { x: 424, label: 'TOOLS', nodes: [['MCP ×6', '#3BD9BE'], ['A2A ×2', '#E2A94F']] },
+  ];
+  let g = '';
+  layers.forEach((L, li) => {
+    g += `<text x="${L.x}" y="14" font-size="8.5" font-family="monospace" fill="#61756F" text-anchor="middle" letter-spacing="1">${L.label}</text>`;
+    L.nodes.forEach((n, ni) => {
+      const y = L.nodes.length === 1 ? H / 2 - 6 : 52 + ni * 66;
+      g += `<rect x="${L.x - 56}" y="${y - 15}" width="112" height="30" rx="3" fill="#131A1D" stroke="${n[1]}" stroke-opacity=".55"/>`;
+      g += `<circle cx="${L.x - 44}" cy="${y}" r="3" fill="${n[1]}"/>`;
+      g += `<text x="${L.x + 6}" y="${y + 3.5}" font-size="9.5" font-family="monospace" fill="#DDE7E3" text-anchor="middle">${n[0]}</text>`;
+      if (li < layers.length - 1) {
+        const nx = layers[li + 1];
+        nx.nodes.forEach((m, mi) => {
+          const ny = nx.nodes.length === 1 ? H / 2 - 6 : 52 + mi * 66;
+          const dashed = (li === 3);
+          g += `<line x1="${L.x + 56}" y1="${y}" x2="${nx.x - 56}" y2="${ny}" stroke="${dashed ? '#E2A94F' : '#2E4045'}" stroke-width="1" opacity=".7"/>`;
+        });
+      }
+    });
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%">${g}</svg>`;
+})();
+
+/* ---------------- ecosystem registry ---------------- */
+const ECO = {
+  mcp: MOCK.TOOLS.map(t => `
+    <div class="list-item" data-toast="${t.name} 已复制安装命令">
+      <div class="li-main">
+        <div class="li-title"><span class="mono" style="color:var(--accent);font-size:11px">${t.name}</span>
+          <span class="tag ${t.protocol.indexOf('A2A') === 0 ? 'tag-warn' : 'tag-calc'}">${t.protocol}</span></div>
+        <div class="li-sub">${t.desc} · ${t.calls} calls · ${t.latency} ms</div>
+      </div>
+      <span class="dot ${t.status === 'ok' ? 'dot-run' : t.status === 'warn' ? 'dot-warn' : 'dot-idle'}"></span>
+    </div>`).join(''),
+  skill: [
+    { n: 'xrd-phase-identification', v: 'v1.3', d: 'PXRD 峰位提取 + 物相匹配 + 微量相定量', i: 214 },
+    { n: 'nasicon-screen', v: 'v2.0', d: 'NASICON 组分筛选：σ / Ea / 稳定性三目标', i: 168 },
+    { n: 'neb-workflow', v: 'v1.1', d: 'CI-NEB 路径搭建、收敛判定与并联修正', i: 96 },
+    { n: 'eis-fitting', v: 'v1.4', d: '等效电路拟合与晶界贡献拆分', i: 143 },
+    { n: 'repro-seal', v: 'v1.0', d: '证据快照哈希 + 一键回放', i: 87 },
+    { n: 'referee-debate', v: 'v1.2', d: '对抗式评审：为结论构造最强反证', i: 121 },
+  ].map(s => `
+    <div class="list-item" data-toast="${s.n}@${s.v} 已安装到本地 Skills">
+      <div class="li-main">
+        <div class="li-title"><span class="mono" style="color:var(--blue);font-size:11px">${s.n}</span>
+          <span class="tag tag-mute">${s.v}</span></div>
+        <div class="li-sub">${s.d}</div>
+      </div>
+      <span class="mono" style="font-size:11px;color:var(--text-3)">↓ ${s.i}</span>
+    </div>`).join(''),
+  a2a: [
+    { n: '计算集群 · 上海超算', v: 'A2A v1.0', d: 'GPU/CPU 混合队列，任务级委派，支持长任务回调', s: 'ready' },
+    { n: '自动化实验线 · 材料所', v: 'A2A v1.0', d: '配方下发 → 合成 → 表征，全链路回传', s: 'ready' },
+    { n: '同行评审沙盒 · 第三方', v: 'A2A v1.0', d: '独立评审智能体，返回结构化质疑清单', s: 'idle' },
+  ].map(a => `
+    <div class="list-item" data-toast="${a.n} 已发起连接握手">
+      <div class="li-main">
+        <div class="li-title">${a.n}<span class="tag tag-warn">${a.v}</span></div>
+        <div class="li-sub">${a.d}</div>
+      </div>
+      <span class="tag ${a.s === 'ready' ? 'tag-run' : 'tag-mute'}">${a.s === 'ready' ? '已认证' : '空闲'}</span>
+    </div>`).join(''),
+};
+function renderEco(tab) {
+  document.getElementById('eco-body').innerHTML = ECO[tab];
+}
+renderEco('mcp');
+document.querySelectorAll('#eco-tabs button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#eco-tabs button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    renderEco(b.dataset.tab);
+  });
+});
+</script>
+</body>
+</html>
